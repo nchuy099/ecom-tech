@@ -59,7 +59,6 @@ export interface ProductSummaryResponse {
   imageUrl?: string;
   rating?: number;
   reviewCount?: number;
-  badge?: string;
 }
 
 export interface ProductVariantDetailResponse {
@@ -110,8 +109,27 @@ export interface WarehouseResponse {
   code: string;
   name: string;
   addressLine: string;
+  priorityArea: string;
   latitude: number;
   longitude: number;
+  active: boolean;
+  shippingZones?: WarehouseShippingZoneResponse[];
+}
+
+export interface ShippingZoneResponse {
+  id: string;
+  code: string;
+  name: string;
+  matchedCities: string[];
+  active: boolean;
+}
+
+export interface WarehouseShippingZoneResponse {
+  id: string;
+  shippingZoneId: string;
+  shippingZoneCode: string;
+  shippingZoneName: string;
+  priority: number;
   active: boolean;
 }
 
@@ -119,15 +137,26 @@ export interface InventoryResponse {
   id: string;
   warehouseId: string;
   warehouseName: string;
+  warehousePriorityArea?: string;
   variantId: string;
   sku: string;
   productName: string;
   availableQuantity: number;
   reservedQuantity: number;
+  deliverableToSelectedAddress?: boolean;
 }
 
 // Order, Shipment, and Checkout Types
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus =
+  | 'PENDING_PAYMENT'
+  | 'CONFIRMED'
+  | 'PARTIALLY_SHIPPED'
+  | 'SHIPPED'
+  | 'COMPLETED'
+  | 'RETURN_REQUESTED'
+  | 'PARTIALLY_RETURNED'
+  | 'RETURNED'
+  | 'CANCELLED';
 
 export interface OrderItemResponse {
   id: string;
@@ -161,11 +190,23 @@ export interface ShipmentPlanResponse {
   distanceKm: number;
 }
 
+export interface CheckoutItemAvailabilityResponse {
+  variantId: string;
+  sku: string;
+  productName: string;
+  variantName: string;
+  requestedQuantity: number;
+  availableInSelectedZone: number;
+  missingQuantity: number;
+  available: boolean;
+}
+
 export interface CheckoutResponse {
   orderId: string;
   orderNumber: string;
   totalAmount: number;
   shipments: ShipmentPlanResponse[];
+  items: CheckoutItemAvailabilityResponse[];
 }
 
 export type ShipmentStatus =
@@ -185,6 +226,14 @@ export interface TrackingEvent {
   note: string;
 }
 
+export interface ShipmentItemResponse {
+  id: string;
+  returnItemId?: string;
+  sku: string;
+  name: string;
+  quantity: number;
+}
+
 export interface ShipmentResponse {
   id: string;
   orderId: string;
@@ -194,21 +243,45 @@ export interface ShipmentResponse {
   shipperId?: string;
   shipperName?: string;
   status: ShipmentStatus;
+  type?: 'OUTBOUND' | 'RETURN';
+  returnId?: string;
+  warehouseReceivedAt?: string;
+  items?: ShipmentItemResponse[];
   trackingNumber: string;
   recipientName: string;
   recipientPhone: string;
   deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  warehouseLatitude?: number;
+  warehouseLongitude?: number;
   distanceKm: number;
   updatedAt: string;
   timeline?: TrackingEvent[];
 }
 
-export type ReturnStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'REFUNDED';
+export type ReturnStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'RESTOCKED' | 'REFUNDED';
+
+export interface ReturnItemResponse {
+  id: string;
+  orderItemId: string;
+  sku: string;
+  name: string;
+  unitPrice: number;
+  requestedQuantity: number;
+  receivedQuantity: number;
+  restockedQuantity: number;
+}
 
 export interface ReturnResponse {
   id: string;
   orderId: string;
   status: ReturnStatus;
   reason: string;
+  decisionNote?: string;
   createdAt?: string;
+  updatedAt?: string;
+  refundableAmount?: number;
+  items: ReturnItemResponse[];
+  shipments: ShipmentResponse[];
 }
