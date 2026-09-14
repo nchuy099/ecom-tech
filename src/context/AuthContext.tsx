@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Role, UserProfile } from '../types';
+import { Role, TokenPairResponse, UserProfile } from '../types';
+import { api } from '../services/api';
 
 export const DEMO_PROFILES: Record<Role, UserProfile> = {
   CUSTOMER: {
@@ -32,10 +33,9 @@ interface AuthContextType {
   user: UserProfile | null;
   role: Role | 'GUEST';
   token: string | null;
-  mockMode: boolean;
-  setMockMode: (val: boolean) => void;
-  switchRole: (role: Role | 'GUEST') => void;
-  login: (email: string, role?: Role) => Promise<void>;
+  switchRole: (role: Role | 'GUEST') => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (displayName: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -43,59 +43,100 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mockMode, setMockModeState] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ecom_mock_mode');
-    return saved !== null ? saved === 'true' : true; // Default to true for UI-first testing
-  });
-
   const [role, setRole] = useState<Role | 'GUEST'>(() => {
+    const accessToken = localStorage.getItem('ecom_access_token');
+    if (!accessToken) return 'GUEST';
+
     const saved = localStorage.getItem('ecom_user_role') as (Role | 'GUEST');
-    return saved || 'CUSTOMER';
+    return saved || 'GUEST';
   });
 
   const [user, setUser] = useState<UserProfile | null>(() => {
+    const accessToken = localStorage.getItem('ecom_access_token');
+    if (!accessToken) return null;
     if (role === 'GUEST') return null;
     return DEMO_PROFILES[role as Role] || DEMO_PROFILES.CUSTOMER;
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('ecom_access_token') || 'demo-jwt-token-customer';
+    return localStorage.getItem('ecom_access_token');
   });
 
-  const setMockMode = (val: boolean) => {
-    setMockModeState(val);
-    localStorage.setItem('ecom_mock_mode', String(val));
+  useEffect(() => {
+    const accessToken = localStorage.getItem('ecom_access_token');
+    if (!accessToken) return;
+
+    api
+      .get<UserProfile>('/users/me')
+      .then(profile => {
+        setUser(profile);
+        setRole(profile.role);
+      })
+      .catch(() => {
+        localStorage.removeItem('ecom_access_token');
+        localStorage.removeItem('ecom_refresh_token');
+        setUser(null);
+        setRole('GUEST');
+        setToken(null);
+      });
+  }, []);
+
+  const applySession = async (tokens: TokenPairResponse) => {
+    localStorage.setItem('ecom_access_token', tokens.accessToken);
+    localStorage.setItem('ecom_refresh_token', tokens.refreshToken);
+    setToken(tokens.accessToken);
+
+    const profile = await api.get<UserProfile>('/users/me');
+    setUser(profile);
+    setRole(profile.role);
+    localStorage.setItem('ecom_user_role', profile.role);
   };
 
-  const switchRole = (newRole: Role | 'GUEST') => {
+  const switchRole = async (newRole: Role | 'GUEST') => {
     setRole(newRole);
     localStorage.setItem('ecom_user_role', newRole);
     if (newRole === 'GUEST') {
       setUser(null);
       setToken(null);
       localStorage.removeItem('ecom_access_token');
-    } else {
-      const demoUser = DEMO_PROFILES[newRole];
-      setUser(demoUser);
-      const demoToken = `demo-jwt-token-${newRole.toLowerCase()}`;
-      setToken(demoToken);
-      localStorage.setItem('ecom_access_token', demoToken);
+      localStorage.removeItem('ecom_refresh_token');
+      return;
     }
+
+    const demoUser = DEMO_PROFILES[newRole];
+    const tokens = await api.post<TokenPairResponse>('/auth/login', {
+      email: demoUser.email,
+      password: 'Demo@123456',
+      deviceName: 'vite-dev-role-switcher',
+    });
+    await applySession(tokens);
   };
 
-  const login = async (email: string, targetRole: Role = 'CUSTOMER') => {
-    // In mock mode or quick login:
-    const profile = DEMO_PROFILES[targetRole];
-    setUser({ ...profile, email });
-    setRole(targetRole);
-    const demoToken = `demo-jwt-token-${targetRole.toLowerCase()}`;
-    setToken(demoToken);
-    localStorage.setItem('ecom_access_token', demoToken);
-    localStorage.setItem('ecom_user_role', targetRole);
+  const login = async (email: string, password: string) => {
+    const tokens = await api.post<TokenPairResponse>('/auth/login', {
+      email,
+      password,
+      deviceName: 'vite-web',
+    });
+    await applySession(tokens);
+  };
+
+  const register = async (displayName: string, email: string, password: string) => {
+    const tokens = await api.post<TokenPairResponse>('/auth/register', {
+      displayName,
+      email,
+      password,
+      deviceName: 'vite-web',
+    });
+    await applySession(tokens);
   };
 
   const logout = () => {
-    switchRole('GUEST');
+    const refreshToken = localStorage.getItem('ecom_refresh_token');
+    if (refreshToken) {
+      api.post<void>('/auth/logout', { refreshToken }).catch(() => undefined);
+    }
+    void switchRole('GUEST');
   };
 
   return (
@@ -104,12 +145,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         role,
         token,
-        mockMode,
-        setMockMode,
         switchRole,
         login,
+        register,
         logout,
-        isAuthenticated: !!user,
+        isAuthenticated: !!user && !!token,
       }}
     >
       {children}

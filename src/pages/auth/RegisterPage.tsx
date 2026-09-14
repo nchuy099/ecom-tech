@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { useToast } from '../../context/ToastContext';
 
 export const RegisterPage: React.FC = () => {
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
 
@@ -20,7 +20,7 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, 'CUSTOMER');
+      await register(displayName, email, password);
       addToast('success', 'Đăng ký tài khoản thành công!', `Chào mừng ${displayName || email}`);
       navigate('/');
     } catch (err: any) {
