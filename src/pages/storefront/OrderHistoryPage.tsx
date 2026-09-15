@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, ArrowRight, Clock, CheckCircle2, Truck, XCircle } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { OrderResponse, OrderStatus } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { Badge } from '../../components/ui/Badge';
@@ -11,15 +11,27 @@ export const OrderHistoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('ALL');
 
   useEffect(() => {
-    mockService.getOrders().then(setOrders);
+    ecommerceService.getOrders().then(setOrders);
   }, []);
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
-      case 'DELIVERED':
+      case 'COMPLETED':
         return (
           <Badge variant="brand" size="sm">
-            <CheckCircle2 className="w-3 h-3 mr-1 inline" /> Đã giao thành công
+            <CheckCircle2 className="w-3 h-3 mr-1 inline" /> Hoàn thành
+          </Badge>
+        );
+      case 'RETURN_REQUESTED':
+        return <Badge variant="warning" size="sm"><Clock className="w-3 h-3 mr-1 inline" /> Đang trả hàng</Badge>;
+      case 'PARTIALLY_RETURNED':
+        return <Badge variant="info" size="sm"><Package className="w-3 h-3 mr-1 inline" /> Đã trả một phần</Badge>;
+      case 'RETURNED':
+        return <Badge variant="brand" size="sm"><CheckCircle2 className="w-3 h-3 mr-1 inline" /> Đã trả hàng</Badge>;
+      case 'PARTIALLY_SHIPPED':
+        return (
+          <Badge variant="info" size="sm">
+            <Truck className="w-3 h-3 mr-1 inline" /> Giao một phần
           </Badge>
         );
       case 'SHIPPED':
@@ -71,7 +83,9 @@ export const OrderHistoryPage: React.FC = () => {
           { key: 'ALL', label: 'Tất cả' },
           { key: 'CONFIRMED', label: 'Đã xác nhận' },
           { key: 'SHIPPED', label: 'Đang giao hàng' },
-          { key: 'DELIVERED', label: 'Hoàn thành' },
+          { key: 'COMPLETED', label: 'Hoàn thành' },
+          { key: 'RETURN_REQUESTED', label: 'Đang trả' },
+          { key: 'RETURNED', label: 'Đã trả' },
           { key: 'CANCELLED', label: 'Đã hủy' },
         ].map(tab => (
           <button
@@ -130,8 +144,8 @@ export const OrderHistoryPage: React.FC = () => {
               {/* Items preview */}
               <div className="space-y-3">
                 {order.items.map(item => (
-                  <div key={item.id} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
+                  <div key={item.id} className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex min-w-0 items-center gap-3">
                       <img
                         src={
                           item.imageUrl ||
@@ -147,7 +161,7 @@ export const OrderHistoryPage: React.FC = () => {
                         <p className="text-[11px] text-zinc-400">{item.variantName}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="shrink-0 text-right">
                       <p className="font-bold text-zinc-900 dark:text-zinc-100">
                         {formatCurrency(item.subtotal)}
                       </p>
@@ -158,7 +172,7 @@ export const OrderHistoryPage: React.FC = () => {
               </div>
 
               {/* Footer */}
-              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs">
+              <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <span className="text-zinc-500">
                   Giao đến: <span className="font-medium text-zinc-700 dark:text-zinc-300">{order.city}</span>
                 </span>

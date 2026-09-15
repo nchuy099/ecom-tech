@@ -7,10 +7,10 @@ import {
   Calendar,
   AlertTriangle,
   RotateCcw,
-  ShieldCheck,
-  CheckCircle2,
+  Download,
+  QrCode,
 } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { OrderResponse, ShipmentResponse } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { OrderStatusStepper } from '../../components/storefront/OrderStatusStepper';
@@ -18,6 +18,7 @@ import { TrackingTimeline } from '../../components/storefront/TrackingTimeline';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import { downloadDataUrl, generateQrDataUrl, shipmentQrPayload } from '../../utils/qr';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,22 +26,43 @@ export const OrderDetailPage: React.FC = () => {
 
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [shipment, setShipment] = useState<ShipmentResponse | null>(null);
+  const [shipmentQrDataUrl, setShipmentQrDataUrl] = useState('');
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnReason, setReturnReason] = useState('');
+  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (id) {
-      mockService.getOrderDetail(id).then(ord => {
+      ecommerceService.getOrderDetail(id).then(ord => {
         if (ord) {
           setOrder(ord);
-          mockService.getShipmentByOrder(ord.id).then(shp => {
+          ecommerceService.getShipmentByOrder(ord.id).then(shp => {
             if (shp) setShipment(shp);
           });
         }
       });
     }
   }, [id]);
+
+  useEffect(() => {
+    if (!shipment?.trackingNumber) {
+      setShipmentQrDataUrl('');
+      return;
+    }
+
+    let cancelled = false;
+
+    generateQrDataUrl(shipmentQrPayload(shipment.trackingNumber)).then(dataUrl => {
+      if (!cancelled) {
+        setShipmentQrDataUrl(dataUrl);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shipment?.trackingNumber]);
 
   if (!order) {
     return (
@@ -55,30 +77,47 @@ export const OrderDetailPage: React.FC = () => {
 
   const handleCancelOrder = async () => {
     try {
-      await mockService.cancelOrder(order.id);
+      await ecommerceService.cancelOrder(order.id);
       setOrder(prev => (prev ? { ...prev, status: 'CANCELLED' } : null));
       setIsCancelModalOpen(false);
       addToast(
         'success',
         'Đã hủy đơn hàng thành công!',
-        'Hệ thống JPA đã rollback hoàn trả số lượng vào tồn kho khả dụng.'
+        'Số lượng đã giữ cho đơn hàng được hoàn trả vào tồn kho khả dụng.'
       );
     } catch (err: any) {
       addToast('error', 'Không thể hủy đơn', err.message);
     }
   };
 
-  const handleCreateReturn = () => {
+  const handleCreateReturn = async () => {
     if (!returnReason.trim()) {
       addToast('error', 'Chưa nhập lý do', 'Vui lòng cung cấp lý do yêu cầu đổi trả.');
       return;
     }
-    setIsReturnModalOpen(false);
-    addToast(
-      'success',
-      'Đã gửi yêu cầu đổi trả',
-      'Bộ phận hậu cần sẽ liên hệ xác nhận trong 24 giờ làm việc.'
-    );
+
+    const items = Object.entries(returnQuantities)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([orderItemId, quantity]) => ({ orderItemId, quantity }));
+    if (!items.length) {
+      addToast('error', 'Chưa chọn sản phẩm', 'Chọn ít nhất một sản phẩm và số lượng cần trả.');
+      return;
+    }
+
+    try {
+      await ecommerceService.createReturn(order.id, returnReason.trim(), items);
+      setIsReturnModalOpen(false);
+      setReturnReason('');
+      setReturnQuantities({});
+      addToast(
+        'success',
+        'Đã gửi yêu cầu đổi trả',
+        'Bộ phận hậu cần sẽ liên hệ xác nhận trong 24 giờ làm việc.'
+      );
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (err: any) {
+      addToast('error', 'Không thể tạo yêu cầu đổi trả', err.message || 'Lỗi hệ thống');
+    }
   };
 
   return (
@@ -108,7 +147,7 @@ export const OrderDetailPage: React.FC = () => {
 
         {/* Order Actions */}
         <div className="flex items-center gap-2">
-          {order.status === 'PENDING' && (
+          {order.status === 'PENDING_PAYMENT' && (
             <Button
               variant="outline"
               size="sm"
@@ -118,12 +157,15 @@ export const OrderDetailPage: React.FC = () => {
               Hủy Đơn Hàng
             </Button>
           )}
-          {order.status === 'DELIVERED' && (
+          {order.status === 'COMPLETED' && (
             <Button
               variant="outline"
               size="sm"
               leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-              onClick={() => setIsReturnModalOpen(true)}
+              onClick={() => {
+                setReturnQuantities({});
+                setIsReturnModalOpen(true);
+              }}
             >
               Yêu Cầu Đổi Trả
             </Button>
@@ -147,8 +189,8 @@ export const OrderDetailPage: React.FC = () => {
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {order.items.map(item => (
-                <div key={item.id} className="py-4 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-4">
+                <div key={item.id} className="flex flex-col gap-3 py-4 text-xs min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
                     <img
                       src={
                         item.imageUrl ||
@@ -164,7 +206,7 @@ export const OrderDetailPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-right">
+                  <div className="self-end text-right min-[420px]:self-auto">
                     <p className="font-bold text-brand-600 dark:text-brand-400">
                       {formatCurrency(item.subtotal)}
                     </p>
@@ -174,7 +216,7 @@ export const OrderDetailPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-xs">
+            <div className="flex flex-col gap-1 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <span className="text-zinc-500">Tổng thanh toán:</span>
               <span className="text-base font-black text-brand-600 dark:text-brand-400">
                 {formatCurrency(order.totalAmount)}
@@ -210,7 +252,7 @@ export const OrderDetailPage: React.FC = () => {
               <p className="font-bold text-zinc-900 dark:text-zinc-100">
                 {order.recipientName || 'Khách Hàng'}
               </p>
-              <p>{order.phone || '0988 123 456'}</p>
+              <p>{order.phone || 'Chưa có số điện thoại'}</p>
               <p>{order.addressLine || order.city}</p>
             </div>
           </div>
@@ -237,6 +279,55 @@ export const OrderDetailPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {shipment && (
+            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                <QrCode className="w-4 h-4 text-emerald-600" />
+                <span>Mã QR Vận Đơn</span>
+              </div>
+
+              <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 p-4 text-center space-y-3">
+                {shipmentQrDataUrl ? (
+                  <img
+                    src={shipmentQrDataUrl}
+                    alt={`QR vận đơn ${shipment.trackingNumber}`}
+                    className="mx-auto h-44 w-44 rounded-xl bg-white p-2"
+                  />
+                ) : (
+                  <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-xl bg-white text-xs text-zinc-400">
+                    Đang tạo QR...
+                  </div>
+                )}
+
+                <div>
+                  <p className="font-mono text-xs font-black text-zinc-900 dark:text-zinc-100">
+                    {shipment.trackingNumber}
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Shipper có thể tải ảnh này lên để mở nhanh vận đơn.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  disabled={!shipmentQrDataUrl}
+                  leftIcon={<Download className="w-3.5 h-3.5" />}
+                  onClick={() =>
+                    downloadDataUrl(
+                      shipmentQrDataUrl,
+                      `shipment-${shipment.trackingNumber}.png`
+                    )
+                  }
+                >
+                  Tải QR xuống
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -245,14 +336,13 @@ export const OrderDetailPage: React.FC = () => {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         title="Xác Nhận Hủy Đơn Hàng"
-        description="Kiểm thử cơ chế hoàn trả tồn kho tự động (JPA Rollback)"
+        description="Sau khi hủy, số lượng đã giữ sẽ được hoàn trả vào tồn kho."
       >
         <div className="space-y-4">
           <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              Khi hủy đơn hàng, hệ thống Spring Boot sẽ giải phóng số lượng đã giữ trong bảng
-              `reserved_quantity` và khôi phục vào `available_quantity`.
+              Khi hủy đơn hàng, số lượng đang giữ sẽ được mở lại để khách khác có thể mua.
             </span>
           </div>
 
@@ -272,9 +362,31 @@ export const OrderDetailPage: React.FC = () => {
         isOpen={isReturnModalOpen}
         onClose={() => setIsReturnModalOpen(false)}
         title="Yêu Cầu Đổi Trả Sản Phẩm"
-        description="Gửi yêu cầu đổi trả tới cổng hậu cần /api/v1/returns"
+        description="Gửi yêu cầu đổi trả để bộ phận hậu cần kiểm tra và liên hệ lại"
       >
         <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">Sản phẩm cần trả</p>
+            <div className="max-h-56 divide-y overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
+              {order.items.map(item => {
+                const quantity = returnQuantities[item.id] || 0;
+                return (
+                  <div key={item.id} className="flex min-w-0 items-center gap-3 p-3">
+                    <img src={item.imageUrl || 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=200&q=80'} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-zinc-900 dark:text-zinc-100">{item.productName}</p>
+                      <p className="text-[11px] text-zinc-500">{item.variantName} · Đã mua: {item.quantity}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5" aria-label={`Số lượng trả ${item.productName}`}>
+                      <button type="button" className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-base font-bold disabled:opacity-40 dark:border-zinc-700" disabled={quantity === 0} onClick={() => setReturnQuantities(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}>−</button>
+                      <span className="w-5 text-center text-xs font-bold tabular-nums">{quantity}</span>
+                      <button type="button" className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-base font-bold disabled:opacity-40 dark:border-zinc-700" disabled={quantity >= item.quantity} onClick={() => setReturnQuantities(prev => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1) }))}>+</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
               Lý do đổi trả:
@@ -288,11 +400,11 @@ export const OrderDetailPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" size="sm" onClick={() => setIsReturnModalOpen(false)}>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => setIsReturnModalOpen(false)}>
               Đóng
             </Button>
-            <Button size="sm" onClick={handleCreateReturn}>
+            <Button className="w-full sm:w-auto" size="sm" onClick={handleCreateReturn}>
               Gửi yêu cầu
             </Button>
           </div>
