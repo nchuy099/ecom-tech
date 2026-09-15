@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   Package,
 } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { OrderResponse, InventoryResponse } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { Badge } from '../../components/ui/Badge';
@@ -20,8 +20,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryResponse[]>([]);
 
   useEffect(() => {
-    mockService.getOrders().then(setOrders);
-    mockService.getInventory().then(setInventory);
+    ecommerceService.getAdminOrders().then(setOrders);
+    ecommerceService.getInventory().then(setInventory);
   }, []);
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -89,7 +89,7 @@ export const AdminDashboardPage: React.FC = () => {
           <div>
             <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">
               {totalAvailableStock}{' '}
-              <span className="text-xs font-normal text-zinc-400 font-mono">units</span>
+              <span className="text-xs font-normal text-zinc-400 font-mono">sản phẩm</span>
             </p>
             <p className="text-[11px] text-zinc-400 mt-1">Đang sẵn sàng xuất kho</p>
           </div>
@@ -107,9 +107,9 @@ export const AdminDashboardPage: React.FC = () => {
           <div>
             <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
               {totalReservedStock}{' '}
-              <span className="text-xs font-normal text-zinc-400 font-mono">reserved</span>
+              <span className="text-xs font-normal text-zinc-400 font-mono">đang giữ</span>
             </p>
-            <p className="text-[11px] text-zinc-400 mt-1">Khóa bảo vệ bởi Pessimistic Lock</p>
+            <p className="text-[11px] text-zinc-400 mt-1">Đang giữ cho các đơn chưa hoàn tất</p>
           </div>
         </div>
       </div>
