@@ -46,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in"
@@ -56,11 +56,11 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog */}
       <div
         className={cn(
-          'relative w-full rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden z-10 animate-scale-up',
+          'relative z-10 max-h-[85dvh] w-full overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl animate-scale-up dark:border-zinc-800 dark:bg-zinc-900 sm:max-h-[80vh] sm:rounded-2xl',
           maxWidths[maxWidth]
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="flex items-center justify-between gap-3 px-4 py-4 border-b border-zinc-100 dark:border-zinc-800 sm:px-6">
           <div>
             {title && (
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -79,7 +79,7 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
+        <div className="max-h-[calc(85dvh-5.5rem)] overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-h-[calc(80vh-5.5rem)] sm:p-6">{children}</div>
       </div>
     </div>
   );
