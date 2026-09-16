@@ -331,12 +331,84 @@ export const ShipperDashboardPage: React.FC = () => {
     setCameraActive(false);
   }, []);
 
-  const handleUpdateStatus = async (id: string, newStatus: ShipmentStatus, label: string) => {
-    await mockService.updateShipmentStatus(id, newStatus);
-    setShipments(prev =>
-      prev.map(s => (s.id === id ? { ...s, status: newStatus } : s))
-    );
-    addToast('success', 'Đã cập nhật vận đơn!', `Trạng thái mới: ${label}`);
+  useEffect(() => {
+    if (!scannerOpen || !cameraActive) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const startCamera = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Trình duyệt không hỗ trợ camera. Bạn có thể tải ảnh QR lên.');
+        setCameraActive(false);
+        return;
+      }
+
+      try {
+        setCameraError('');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+
+        if (cancelled || !cameraVideoRef.current) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+        const video = cameraVideoRef.current;
+        video.srcObject = stream;
+        await video.play();
+
+        const { default: jsQR } = await import('jsqr');
+        const scanFrame = () => {
+          if (cancelled || !cameraVideoRef.current || !cameraCanvasRef.current) {
+            return;
+          }
+
+          const currentVideo = cameraVideoRef.current;
+          const canvas = cameraCanvasRef.current;
+          if (currentVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            canvas.width = currentVideo.videoWidth;
+            canvas.height = currentVideo.videoHeight;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (context && canvas.width > 0 && canvas.height > 0) {
+              context.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
+              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+              const result = jsQR(imageData.data, imageData.width, imageData.height);
+              if (result?.data) {
+                const decodedValue = result.data.trim();
+                setTrackingNumber(extractTrackingNumber(decodedValue));
+                stopCamera();
+                void handleLookup(decodedValue);
+                return;
+              }
+            }
+          }
+
+          cameraFrameRef.current = requestAnimationFrame(scanFrame);
+        };
+
+        cameraFrameRef.current = requestAnimationFrame(scanFrame);
+      } catch {
+        setCameraError('Không thể mở camera. Hãy cấp quyền camera hoặc tải ảnh QR lên.');
+        setCameraActive(false);
+      }
+    };
+
+    void startCamera();
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [cameraActive, scannerOpen, stopCamera]);
+
+  const closeScanner = () => {
+    stopCamera();
+    setScannerOpen(false);
   };
 
   return (
