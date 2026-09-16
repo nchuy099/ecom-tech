@@ -36,12 +36,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
       {/* Toast container */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div
+        className="pointer-events-none fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100svh-2rem)] flex-col gap-2 overflow-y-auto overscroll-contain sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-h-[calc(100svh-2.5rem)] sm:w-full sm:max-w-sm"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {toasts.map(toast => {
           return (
             <div
               key={toast.id}
-              className="pointer-events-auto flex items-start gap-3 p-4 rounded-xl shadow-xl border bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-zinc-200 dark:border-zinc-800 animate-slide-up transition-all"
+              className="pointer-events-auto flex min-w-0 items-start gap-3 rounded-xl border border-zinc-200 bg-white/95 p-3 shadow-xl backdrop-blur-md transition-all dark:border-zinc-800 dark:bg-zinc-900/95 sm:p-4"
             >
               {toast.type === 'success' && (
                 <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
@@ -53,14 +57,19 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{toast.title}</p>
+                <p className="break-words text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  {toast.title}
+                </p>
                 {toast.message && (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">{toast.message}</p>
+                  <p className="mt-0.5 break-words text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                    {toast.message}
+                  </p>
                 )}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded"
+                className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                aria-label="Đóng thông báo"
               >
                 <X className="w-4 h-4" />
               </button>
