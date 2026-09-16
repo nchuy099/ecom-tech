@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Warehouse, MapPin, Plus, Edit2, Boxes, ShieldCheck, Check } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { Warehouse, MapPin, Edit2, Boxes, Check } from 'lucide-react';
+import { ecommerceService } from '../../services/ecommerceService';
 import { WarehouseResponse, InventoryResponse } from '../../types';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
@@ -17,8 +16,8 @@ export const AdminWarehousesPage: React.FC = () => {
   const { addToast } = useToast();
 
   useEffect(() => {
-    mockService.getWarehouses().then(setWarehouses);
-    mockService.getInventory().then(setInventory);
+    ecommerceService.getWarehouses().then(setWarehouses);
+    ecommerceService.getInventory().then(setInventory);
   }, []);
 
   const handleOpenAdjust = (item: InventoryResponse) => {
@@ -31,7 +30,7 @@ export const AdminWarehousesPage: React.FC = () => {
     e.preventDefault();
     if (!selectedItem) return;
 
-    await mockService.adjustInventory(selectedItem.warehouseId, selectedItem.variantId, adjustAmount);
+    await ecommerceService.adjustInventory(selectedItem.warehouseId, selectedItem.variantId, adjustAmount);
     setInventory(prev =>
       prev.map(item =>
         item.id === selectedItem.id
@@ -55,7 +54,7 @@ export const AdminWarehousesPage: React.FC = () => {
           Mạng Lưới Tổng Kho & Quản Trị Tồn Kho
         </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          Kiểm soát tọa độ địa lý phục vụ thuật toán Haversine và điều chỉnh số lượng tồn kho từng điểm xuất hàng.
+          Quản lý thông tin kho, phạm vi giao hàng và số lượng tồn kho từng điểm xuất hàng.
         </p>
       </div>
 
@@ -83,12 +82,24 @@ export const AdminWarehousesPage: React.FC = () => {
 
             <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{wh.addressLine}</p>
 
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="neutral" size="sm">
+                <MapPin className="w-3 h-3 mr-1" />
+                Khu vực ưu tiên: {wh.priorityArea || 'Chưa thiết lập'}
+              </Badge>
+              {(wh.shippingZones || []).map(zone => (
+                <Badge key={zone.id} variant={zone.active ? 'brand' : 'outline'} size="sm">
+                  {zone.shippingZoneName} · Ưu tiên {zone.priority}
+                </Badge>
+              ))}
+            </div>
+
             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-500">
               <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-brand-500" />
-                <span>[{wh.latitude}, {wh.longitude}]</span>
+                <Warehouse className="w-3.5 h-3.5 text-brand-500" />
+                <span>Phạm vi giao hàng theo vùng phục vụ</span>
               </span>
-              <span className="text-brand-600 font-semibold">Ready to Dispatch</span>
+              <span className="text-brand-600 font-semibold">Sẵn sàng xuất hàng</span>
             </div>
           </div>
         ))}
@@ -96,51 +107,49 @@ export const AdminWarehousesPage: React.FC = () => {
 
       {/* Inventory Table */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-brand-600" />
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              Bảng Phân Bổ Tồn Kho Chi Tiết (Inventory Levels)
+              Bảng Phân Bổ Tồn Kho Chi Tiết
             </h3>
           </div>
-          <p className="text-xs text-zinc-400 font-mono">
-            Endpoint: /api/v1/admin/inventory
-          </p>
+          <p className="text-xs text-zinc-400 font-mono">Theo dõi tồn kho theo từng kho</p>
         </div>
 
         <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden shadow-sm">
-          <table className="w-full text-left text-xs">
+          <table className="responsive-table w-full text-left text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-400 uppercase font-mono tracking-wider text-[10px] border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="py-3 px-4">Sản Phẩm</th>
                 <th className="py-3 px-4">Mã SKU</th>
                 <th className="py-3 px-4">Vị Trí Kho</th>
                 <th className="py-3 px-4">Tồn Khả Dụng</th>
-                <th className="py-3 px-4">Tồn Tạm Giữ (Lock)</th>
+                <th className="py-3 px-4">Tồn Đang Giữ</th>
                 <th className="py-3 px-4 text-right">Điều Chỉnh</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {inventory.map(item => (
                 <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="py-3 px-4 font-bold text-zinc-900 dark:text-zinc-100">
+                  <td data-label="Sản phẩm" className="py-3 px-4 font-bold text-zinc-900 dark:text-zinc-100">
                     {item.productName}
                   </td>
-                  <td className="py-3 px-4 font-mono text-zinc-600 dark:text-zinc-400 font-semibold">
+                  <td data-label="Mã SKU" className="py-3 px-4 font-mono text-zinc-600 dark:text-zinc-400 font-semibold">
                     {item.sku}
                   </td>
-                  <td className="py-3 px-4 text-zinc-500">{item.warehouseName}</td>
-                  <td className="py-3 px-4">
+                  <td data-label="Vị trí kho" className="py-3 px-4 text-zinc-500">{item.warehouseName}</td>
+                  <td data-label="Tồn khả dụng" className="py-3 px-4">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       {item.availableQuantity} sp
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td data-label="Tồn đang giữ" className="py-3 px-4">
                     <span className="font-bold text-amber-600 dark:text-amber-400">
                       {item.reservedQuantity} sp
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td data-label="Điều chỉnh" className="py-3 px-4 text-right">
                     <Button
                       variant="outline"
                       size="sm"
@@ -162,7 +171,7 @@ export const AdminWarehousesPage: React.FC = () => {
         isOpen={isAdjustModalOpen}
         onClose={() => setIsAdjustModalOpen(false)}
         title="Điều Chỉnh Số Lượng Tồn Kho"
-        description="Mô phỏng POST /api/v1/admin/inventory/adjust"
+        description="Cập nhật số lượng tồn kho khả dụng cho sản phẩm tại kho đã chọn"
       >
         {selectedItem && (
           <form onSubmit={handleAdjustInventory} className="space-y-4">
@@ -194,11 +203,11 @@ export const AdminWarehousesPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsAdjustModalOpen(false)}>
+            <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+              <Button className="w-full sm:w-auto" variant="outline" size="sm" type="button" onClick={() => setIsAdjustModalOpen(false)}>
                 Hủy
               </Button>
-              <Button size="sm" type="submit">
+              <Button className="w-full sm:w-auto" size="sm" type="submit">
                 Xác Nhận Điều Chỉnh
               </Button>
             </div>
