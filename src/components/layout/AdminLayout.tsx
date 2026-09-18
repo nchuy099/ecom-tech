@@ -1,23 +1,29 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
   Warehouse,
   Truck,
-  ArrowLeft,
   ShieldCheck,
-  Bell,
   Sun,
   Moon,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const roleLabel =
+    role === 'WAREHOUSE_STAFF'
+      ? 'Nhân viên kho'
+      : role === 'ADMIN'
+      ? 'Quản trị viên'
+      : 'Nhân sự vận hành';
 
   const navItems = [
     { label: 'Tổng Quan (Dashboard)', path: '/admin', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -25,6 +31,11 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     { label: 'Kho Hàng & Tồn Kho', path: '/admin/warehouses', icon: <Warehouse className="w-4 h-4" /> },
     { label: 'Điều Phối Giao Hàng', path: '/admin/shipments', icon: <Truck className="w-4 h-4" /> },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="min-h-screen flex bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors">
@@ -38,9 +49,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             </div>
             <div>
               <span className="font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white">
-                Admin Console
+                Bảng Quản Trị
               </span>
-              <p className="text-[10px] text-zinc-400 font-mono">Ecom Monolith Java</p>
+              <p className="text-[10px] text-zinc-400 font-mono">EcomLab vận hành</p>
             </div>
           </div>
         </div>
@@ -68,17 +79,6 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             );
           })}
         </div>
-
-        {/* Return to Storefront */}
-        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Về Cửa Hàng (Storefront)</span>
-          </Link>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -101,22 +101,24 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <Link
-              to="/notifications"
-              className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              <Bell className="w-4 h-4" />
-            </Link>
-
             <div className="flex items-center gap-2.5 pl-3 border-l border-zinc-200 dark:border-zinc-800">
               <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
                 AD
               </div>
               <div className="text-left hidden sm:block">
                 <p className="text-xs font-bold leading-none">{user?.displayName || 'Admin'}</p>
-                <p className="text-[10px] text-zinc-400 font-mono mt-0.5">ROLE_ADMIN</p>
+                <p className="text-[10px] text-zinc-400 font-mono mt-0.5">{roleLabel}</p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Đăng xuất</span>
+            </button>
           </div>
         </header>
 

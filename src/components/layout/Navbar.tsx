@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -7,8 +7,6 @@ import {
   Sun,
   Moon,
   User,
-  ShieldAlert,
-  Truck,
   LogOut,
   Layers,
   ChevronDown,
@@ -16,7 +14,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
-import { MOCK_CATEGORIES } from '../../services/mockData';
+import { ecommerceService } from '../../services/ecommerceService';
+import { CategoryResponse } from '../../types';
+import { SearchSuggestions } from '../storefront/SearchSuggestions';
 
 export const Navbar: React.FC = () => {
   const { user, role, logout, isAuthenticated } = useAuth();
@@ -25,14 +25,34 @@ export const Navbar: React.FC = () => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  useEffect(() => {
+    ecommerceService.getCategories().then(setCategories).catch(() => setCategories([]));
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/catalog?q=${encodeURIComponent(searchQuery.trim())}`);
+    const normalizedQuery = searchQuery.trim();
+    if (normalizedQuery) {
+      setIsSearchFocused(false);
+      navigate(`/catalog?q=${encodeURIComponent(normalizedQuery)}`);
     }
+  };
+
+  const handleViewAllSuggestions = (keyword: string) => {
+    setSearchQuery(keyword);
+    setIsSearchFocused(false);
+    navigate(`/catalog?q=${encodeURIComponent(keyword)}`);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsUserMenuOpen(false);
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -52,7 +72,7 @@ export const Navbar: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <p className="text-[10px] font-semibold text-zinc-400 -mt-1 tracking-wider uppercase">
-                Monolith Java UI
+                Mua sắm công nghệ
               </p>
             </div>
           </Link>
@@ -72,7 +92,7 @@ export const Navbar: React.FC = () => {
                 className="absolute top-full left-0 mt-2 w-64 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl p-2 z-50 animate-slide-down"
                 onMouseLeave={() => setIsCategoryMenuOpen(false)}
               >
-                {MOCK_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <Link
                     key={cat.id}
                     to={`/catalog?category=${cat.id}`}
@@ -106,8 +126,21 @@ export const Navbar: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => window.setTimeout(() => setIsSearchFocused(false), 120)}
                 placeholder="Tìm MacBook, iPhone, tai nghe Sony..."
                 className="w-full bg-zinc-100/80 dark:bg-zinc-900/80 border border-transparent focus:border-brand-500 rounded-full pl-10 pr-4 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 transition-all focus:outline-none focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-brand-500/20"
+              />
+              <SearchSuggestions
+                keyword={searchQuery}
+                isOpen={isSearchFocused}
+                onSelectProduct={product => {
+                  setSearchQuery('');
+                  setIsSearchFocused(false);
+                  navigate(`/products/${product.id}`);
+                }}
+                onViewAll={handleViewAllSuggestions}
+                className="z-50"
               />
             </div>
           </form>
@@ -189,38 +222,11 @@ export const Navbar: React.FC = () => {
                         >
                           <span>Hồ sơ & Sổ địa chỉ</span>
                         </Link>
-
-                        {/* Admin link */}
-                        {(role === 'ADMIN' || role === 'WAREHOUSE_STAFF') && (
-                          <Link
-                            to="/admin"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-colors"
-                          >
-                            <ShieldAlert className="w-3.5 h-3.5" />
-                            <span>Cổng Quản Trị (Admin)</span>
-                          </Link>
-                        )}
-
-                        {/* Shipper link */}
-                        {(role === 'SHIPPER' || role === 'ADMIN') && (
-                          <Link
-                            to="/shipper"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition-colors"
-                          >
-                            <Truck className="w-3.5 h-3.5" />
-                            <span>Cổng Shipper Giao Hàng</span>
-                          </Link>
-                        )}
                       </div>
 
                       <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800">
                         <button
-                          onClick={() => {
-                            logout();
-                            setIsUserMenuOpen(false);
-                          }}
+                          onClick={handleLogout}
                           className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
                         >
                           <LogOut className="w-3.5 h-3.5" />

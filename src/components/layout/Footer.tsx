@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
 
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2 space-y-4">
             <Link to="/" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
@@ -65,14 +65,14 @@ export const Footer: React.FC = () => {
               </span>
             </Link>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm leading-relaxed">
-              Dự án Frontend hiện đại kết nối với Spring Boot Monolith Java backend. Tích hợp tối ưu truy vấn JPA, OAuth2 JWT, thuật toán điều phối kho Haversine và luồng hoàn tất đơn hàng thời gian thực.
+              Nền tảng mua sắm công nghệ với quản lý tồn kho, điều phối giao hàng và theo dõi đơn hàng theo thời gian thực.
             </p>
             <div className="flex items-center gap-2 pt-2">
               <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                Java 21 • Spring Boot 3.5
+                Tồn kho đa điểm
               </span>
               <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                React 18 • Tailwind CSS
+                Giao hàng theo kho
               </span>
             </div>
           </div>
@@ -83,49 +83,18 @@ export const Footer: React.FC = () => {
             </h5>
             <ul className="space-y-2 text-xs text-zinc-500 dark:text-zinc-400">
               <li><Link to="/catalog" className="hover:text-brand-600 transition-colors">Tất cả sản phẩm</Link></li>
-              <li><Link to="/catalog?category=cat-01" className="hover:text-brand-600 transition-colors">Laptop & Máy tính</Link></li>
-              <li><Link to="/catalog?category=cat-02" className="hover:text-brand-600 transition-colors">Điện thoại Flagship</Link></li>
-              <li><Link to="/catalog?category=cat-03" className="hover:text-brand-600 transition-colors">Thiết bị âm thanh</Link></li>
+              <li><Link to="/orders" className="hover:text-brand-600 transition-colors">Lịch sử đơn hàng</Link></li>
+              <li><Link to="/profile" className="hover:text-brand-600 transition-colors">Sổ địa chỉ</Link></li>
             </ul>
           </div>
 
           <div>
             <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 mb-3">
-              Quản Trị & Kho
+              Hỗ Trợ
             </h5>
             <ul className="space-y-2 text-xs text-zinc-500 dark:text-zinc-400">
-              <li><Link to="/admin" className="hover:text-brand-600 transition-colors">Admin Dashboard</Link></li>
-              <li><Link to="/admin/products" className="hover:text-brand-600 transition-colors">Quản lý sản phẩm & SKU</Link></li>
-              <li><Link to="/admin/warehouses" className="hover:text-brand-600 transition-colors">Mạng lưới kho hàng</Link></li>
-              <li><Link to="/shipper" className="hover:text-brand-600 transition-colors">Cổng tài xế (Shipper)</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 mb-3">
-              API & Swagger
-            </h5>
-            <ul className="space-y-2 text-xs text-zinc-500 dark:text-zinc-400">
-              <li>
-                <a
-                  href="http://localhost:8080/swagger-ui.html"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-brand-600 transition-colors flex items-center gap-1"
-                >
-                  <span>Swagger UI (Springdoc)</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="http://localhost:8080/v3/api-docs"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-brand-600 transition-colors"
-                >
-                  OpenAPI Spec JSON
-                </a>
-              </li>
+              <li><Link to="/profile" className="hover:text-brand-600 transition-colors">Tài khoản của tôi</Link></li>
+              <li><Link to="/notifications" className="hover:text-brand-600 transition-colors">Thông báo</Link></li>
               <li><Link to="/orders" className="hover:text-brand-600 transition-colors">Theo dõi đơn hàng</Link></li>
             </ul>
           </div>

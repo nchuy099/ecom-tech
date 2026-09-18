@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Search, Package, Check, AlertCircle } from 'lucide-react';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from '../../services/mockData';
-import { ProductSummaryResponse } from '../../types';
+import { ecommerceService } from '../../services/ecommerceService';
+import { CategoryResponse, ProductSummaryResponse, WarehouseResponse } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -10,7 +10,9 @@ import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<ProductSummaryResponse[]>([...MOCK_PRODUCTS]);
+  const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseResponse[]>([]);
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { addToast } = useToast();
@@ -20,8 +22,27 @@ export const AdminProductsPage: React.FC = () => {
   const [sku, setSku] = useState('');
   const [variantName, setVariantName] = useState('');
   const [price, setPrice] = useState<number>(10000000);
-  const [categoryId, setCategoryId] = useState(MOCK_CATEGORIES[0].id);
+  const [categoryId, setCategoryId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
   const [quantity, setQuantity] = useState<number>(50);
+
+  const loadProducts = () => {
+    ecommerceService.getProducts({ size: 100 }).then(page => setProducts(page.items));
+  };
+
+  useEffect(() => {
+    loadProducts();
+
+    ecommerceService.getCategories().then(data => {
+      setCategories(data);
+      setCategoryId(current => current || data[0]?.id || '');
+    });
+
+    ecommerceService.getWarehouses().then(data => {
+      setWarehouses(data);
+      setWarehouseId(current => current || data[0]?.id || '');
+    });
+  }, []);
 
   const filteredProducts = products.filter(
     p =>
@@ -29,41 +50,47 @@ export const AdminProductsPage: React.FC = () => {
       p.sku.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !sku.trim()) {
-      addToast('error', 'Thiếu dữ liệu', 'Vui lòng nhập tên sản phẩm và mã SKU.');
+    if (!name.trim() || !sku.trim() || !categoryId || !warehouseId) {
+      addToast('error', 'Thiếu dữ liệu', 'Vui lòng nhập đủ sản phẩm, SKU, ngành hàng và kho nhập.');
       return;
     }
 
-    const newProd: ProductSummaryResponse = {
-      id: `prod-${Date.now()}`,
-      name,
-      categoryId,
-      categoryName: MOCK_CATEGORIES.find(c => c.id === categoryId)?.name,
-      active: true,
-      variantId: `var-${Date.now()}`,
-      sku: sku.toUpperCase(),
-      variantName: variantName || 'Bản Tiêu Chuẩn',
-      price,
-      availableQuantity: quantity,
-      reservedQuantity: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=400&q=80',
-    };
+    try {
+      const product = await ecommerceService.createProduct({
+        categoryId,
+        name,
+        description: 'Sản phẩm được tạo từ màn quản trị React.',
+      });
 
-    setProducts(prev => [newProd, ...prev]);
-    setIsAddModalOpen(false);
-    addToast('success', 'Thêm sản phẩm mới thành công!', `SKU: ${sku.toUpperCase()}`);
+      const variant = await ecommerceService.createVariant(product.id, {
+        sku: sku.toUpperCase(),
+        name: variantName || 'Bản Tiêu Chuẩn',
+        price,
+      });
 
-    // Reset form
-    setName('');
-    setSku('');
-    setVariantName('');
+      await ecommerceService.upsertInventory(warehouseId, variant.id, quantity);
+      loadProducts();
+      setIsAddModalOpen(false);
+      addToast('success', 'Thêm sản phẩm mới thành công!', `SKU: ${sku.toUpperCase()}`);
+
+      setName('');
+      setSku('');
+      setVariantName('');
+    } catch (err: any) {
+      addToast('error', 'Không thể thêm sản phẩm', err.message || 'Lỗi hệ thống');
+    }
   };
 
-  const handleDeleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-    addToast('info', 'Đã xóa sản phẩm khỏi catalog');
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await ecommerceService.deleteProduct(id);
+      setProducts(prev => prev.filter(p => p.id !== id));
+      addToast('info', 'Đã xóa sản phẩm khỏi catalog');
+    } catch (err: any) {
+      addToast('error', 'Không thể xóa sản phẩm', err.message || 'Lỗi hệ thống');
+    }
   };
 
   return (
@@ -74,7 +101,7 @@ export const AdminProductsPage: React.FC = () => {
             Quản Lý Sản Phẩm & Biến Thể (Catalog)
           </h1>
           <p className="text-xs text-zinc-500 mt-1">
-            Thêm mới sản phẩm, quản lý mã SKU và đồng bộ tồn kho với backend Java.
+            Thêm mới sản phẩm, quản lý mã SKU và cập nhật tồn kho cho từng kho.
           </p>
         </div>
 
@@ -169,7 +196,7 @@ export const AdminProductsPage: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Tạo Sản Phẩm & Biến Thể Mới"
-        description="Mô phỏng endpoint POST /api/v1/admin/products"
+        description="Nhập thông tin sản phẩm, biến thể và số lượng tồn kho ban đầu"
       >
         <form onSubmit={handleCreateProduct} className="space-y-4">
           <Input
@@ -205,7 +232,7 @@ export const AdminProductsPage: React.FC = () => {
                 onChange={e => setCategoryId(e.target.value)}
                 className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs focus:outline-none"
               >
-                {MOCK_CATEGORIES.map(c => (
+                {categories.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -227,6 +254,23 @@ export const AdminProductsPage: React.FC = () => {
               onChange={e => setQuantity(Number(e.target.value))}
               required
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase">
+              Kho nhập ban đầu
+            </label>
+            <select
+              value={warehouseId}
+              onChange={e => setWarehouseId(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs focus:outline-none"
+            >
+              {warehouses.map(warehouse => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">

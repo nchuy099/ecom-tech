@@ -14,7 +14,7 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
         <div>
           <p className="text-xs font-bold">Đơn hàng đã hủy</p>
           <p className="text-[11px] text-rose-500/80">
-            Tồn kho khả dụng đã được tự động hoàn trả (JPA Rollback).
+            Tồn kho khả dụng đã được tự động hoàn trả.
           </p>
         </div>
       </div>
@@ -22,17 +22,18 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
   }
 
   const steps = [
-    { key: 'PENDING', label: 'Chờ xác nhận', icon: <Clock className="w-4 h-4" /> },
-    { key: 'CONFIRMED', label: 'Đã xác nhận & Khóa kho', icon: <PackageCheck className="w-4 h-4" /> },
+    { key: 'PENDING_PAYMENT', label: 'Chờ thanh toán', icon: <Clock className="w-4 h-4" /> },
+    { key: 'CONFIRMED', label: 'Đã xác nhận & giữ hàng', icon: <PackageCheck className="w-4 h-4" /> },
     { key: 'SHIPPED', label: 'Đang vận chuyển', icon: <Truck className="w-4 h-4" /> },
-    { key: 'DELIVERED', label: 'Giao thành công', icon: <CheckCircle2 className="w-4 h-4" /> },
+    { key: 'COMPLETED', label: 'Hoàn thành', icon: <CheckCircle2 className="w-4 h-4" /> },
   ];
 
   const statusOrder: Record<OrderStatus, number> = {
-    PENDING: 0,
+    PENDING_PAYMENT: 0,
     CONFIRMED: 1,
+    PARTIALLY_SHIPPED: 2,
     SHIPPED: 2,
-    DELIVERED: 3,
+    COMPLETED: 3,
     CANCELLED: -1,
   };
 

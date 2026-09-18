@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, CheckCheck, Clock, MailCheck } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { NotificationResponse } from '../../types';
 import { formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
@@ -9,16 +9,16 @@ export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
 
   useEffect(() => {
-    mockService.getNotifications().then(setNotifications);
+    ecommerceService.getNotifications().then(setNotifications);
   }, []);
 
   const handleMarkAllRead = async () => {
-    await mockService.markAllNotificationsAsRead();
+    await ecommerceService.markAllNotificationsAsRead();
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const handleMarkSingleRead = async (id: string) => {
-    await mockService.markNotificationAsRead(id);
+    await ecommerceService.markNotificationAsRead(id);
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
   };
 

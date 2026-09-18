@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, MapPin, Plus, Trash2, CheckCircle2, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { AddressResponse } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -11,13 +11,21 @@ import { useToast } from '../../context/ToastContext';
 export const ProfilePage: React.FC = () => {
   const { user, role } = useAuth();
   const { addToast } = useToast();
+  const roleLabel =
+    role === 'ADMIN'
+      ? 'Quản trị viên'
+      : role === 'WAREHOUSE_STAFF'
+      ? 'Nhân viên kho'
+      : role === 'SHIPPER'
+      ? 'Tài xế'
+      : 'Khách hàng';
 
   const [addresses, setAddresses] = useState<AddressResponse[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // New address form state
   const [recipientName, setRecipientName] = useState(user?.displayName || '');
-  const [phone, setPhone] = useState('0988 123 456');
+  const [phone, setPhone] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [city, setCity] = useState('Hà Nội');
   const [latitude, setLatitude] = useState(21.0285);
@@ -25,11 +33,11 @@ export const ProfilePage: React.FC = () => {
   const [defaultAddress, setDefaultAddress] = useState(false);
 
   useEffect(() => {
-    mockService.getAddresses().then(setAddresses);
+    ecommerceService.getAddresses().then(setAddresses);
   }, []);
 
   const handleSetDefault = async (id: string) => {
-    await mockService.setDefaultAddress(id);
+    await ecommerceService.setDefaultAddress(id);
     setAddresses(prev =>
       prev.map(a => ({
         ...a,
@@ -46,7 +54,7 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    const created = await mockService.addAddress({
+    const created = await ecommerceService.addAddress({
       recipientName,
       phone,
       addressLine,
@@ -74,7 +82,7 @@ export const ProfilePage: React.FC = () => {
           Tài Khoản & Sổ Địa Chỉ
         </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          Quản lý thông tin cá nhân và tọa độ GPS phục vụ điều phối kho hàng.
+          Quản lý thông tin cá nhân và địa chỉ giao hàng thường dùng.
         </p>
       </div>
 
@@ -91,7 +99,7 @@ export const ProfilePage: React.FC = () => {
             <p className="text-xs text-zinc-500">{user?.email || 'user@ecomlab.com'}</p>
             <div className="mt-1.5 flex items-center gap-2">
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                ROLE_{role}
+                {roleLabel}
               </span>
             </div>
           </div>
@@ -105,7 +113,7 @@ export const ProfilePage: React.FC = () => {
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
               Sổ Địa Chỉ Giao Hàng
             </h3>
-            <p className="text-xs text-zinc-500">Tọa độ GPS chuẩn để thuật toán Haversine tính toán khoảng cách</p>
+            <p className="text-xs text-zinc-500">Lưu địa chỉ để hệ thống gợi ý kho giao phù hợp.</p>
           </div>
           <Button
             size="sm"
@@ -150,7 +158,7 @@ export const ProfilePage: React.FC = () => {
                   {addr.addressLine}, {addr.city}
                 </p>
                 <p className="text-[10px] font-mono text-zinc-400 pt-1">
-                  GPS: [{addr.latitude}, {addr.longitude}]
+                  Địa chỉ dùng để tính phạm vi giao hàng
                 </p>
               </div>
             </div>
@@ -163,7 +171,7 @@ export const ProfilePage: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Thêm Địa Chỉ Giao Hàng Mới"
-        description="Nhập thông tin nhận hàng và tọa độ GPS định tuyến kho"
+        description="Nhập thông tin nhận hàng để hệ thống chọn kho giao phù hợp"
       >
         <form onSubmit={handleCreateAddress} className="space-y-4">
           <Input

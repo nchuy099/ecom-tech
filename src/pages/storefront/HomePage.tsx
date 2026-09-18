@@ -14,12 +14,15 @@ import {
   Keyboard,
   Home,
 } from 'lucide-react';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from '../../services/mockData';
+import { ecommerceService } from '../../services/ecommerceService';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { Button } from '../../components/ui/Button';
+import { CategoryResponse, ProductSummaryResponse } from '../../types';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
 
   // Countdown timer for Flash Sale
   const [timeLeft, setTimeLeft] = useState({ hours: 14, minutes: 32, seconds: 45 });
@@ -36,6 +39,11 @@ export const HomePage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    ecommerceService.getCategories().then(setCategories);
+    ecommerceService.getProducts({ size: 12 }).then(page => setProducts(page.items));
+  }, []);
+
   const getCategoryIcon = (iconName?: string) => {
     switch (iconName) {
       case 'Laptop': return <Laptop className="w-5 h-5" />;
@@ -47,8 +55,8 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const flashSaleProducts = MOCK_PRODUCTS.slice(0, 4);
-  const featuredProducts = MOCK_PRODUCTS.slice(2, 8);
+  const flashSaleProducts = products.slice(0, 4);
+  const featuredProducts = products.slice(2, 8);
 
   return (
     <div className="space-y-16 pb-20">
@@ -63,7 +71,7 @@ export const HomePage: React.FC = () => {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50/80 dark:bg-brand-950/60 border border-brand-200/80 dark:border-brand-800/60 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
               <span className="text-xs font-bold text-brand-700 dark:text-brand-300">
-                Spring Boot 3.5 + Multi-Warehouse Routing
+                Giao nhanh từ kho gần nhất
               </span>
               <Sparkles className="w-3.5 h-3.5 text-brand-500" />
             </div>
@@ -78,7 +86,7 @@ export const HomePage: React.FC = () => {
 
             {/* Subtext */}
             <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-2xl mx-auto">
-              Nền tảng thương mại điện tử hiện đại với khả năng khóa tồn kho chống bán vượt (Pessimistic Lock), phân luồng giao hàng tự động từ kho gần nhất và theo dõi vận đơn thời gian thực.
+              Nền tảng thương mại điện tử với khả năng giữ hàng an toàn khi đặt đơn, chọn kho xuất phù hợp và theo dõi vận đơn theo thời gian thực.
             </p>
 
             {/* CTAs */}
@@ -95,7 +103,7 @@ export const HomePage: React.FC = () => {
                 size="lg"
                 onClick={() => navigate('/checkout')}
               >
-                Trải Nghiệm Đặt Hàng Đa Kho
+                Trải Nghiệm Đặt Hàng Nhanh
               </Button>
             </div>
 
@@ -135,7 +143,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {MOCK_CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <div
               key={cat.id}
               onClick={() => navigate(`/catalog?category=${cat.id}`)}
@@ -225,20 +233,20 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Multi-Warehouse Architecture Spotlight */}
+      {/* Fulfillment Spotlight */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 lg:p-12 relative overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>Haversine Geolocation Dispatch</span>
+                <span>Gợi ý kho giao phù hợp</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
                 Tối Ưu Vận Chuyển Từ Mạng Lưới Kho Thông Minh
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                Khi bạn tiến hành đặt hàng, hệ thống Spring Boot tự động tính toán khoảng cách địa lý chính xác (Haversine Formula) giữa địa chỉ nhận và 3 cụm tổng kho (Hà Nội, TP.HCM, Đà Nẵng). Đơn hàng sẽ được tự động gom và xuất từ kho gần nhất để giảm thiểu chi phí và thời gian giao nhận.
+                Khi bạn đặt hàng, hệ thống tự động chọn kho phù hợp dựa trên địa chỉ nhận, số lượng còn hàng và khả năng giao nhanh. Đơn hàng có thể được gom hoặc chia kiện để rút ngắn thời gian giao nhận.
               </p>
 
               <div className="pt-2 flex flex-wrap gap-3">
@@ -259,24 +267,24 @@ export const HomePage: React.FC = () => {
 
             <div className="relative rounded-2xl bg-white dark:bg-zinc-950 p-6 border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-4 font-mono text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                <span className="text-zinc-400">Order Routing Engine</span>
-                <span className="text-emerald-500 font-bold">ONLINE</span>
+                <span className="text-zinc-400">Quy trình xử lý đơn</span>
+                <span className="text-emerald-500 font-bold">Sẵn sàng</span>
               </div>
               <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
                 <p className="text-zinc-800 dark:text-zinc-200 font-bold">
-                  // Dispatch preview algorithm
+                  Minh họa luồng đặt hàng
                 </p>
-                <p className="text-zinc-500">// 1. Lock inventory via PESSIMISTIC_WRITE</p>
+                <p className="text-zinc-500">1. Giữ hàng cho sản phẩm khách đã chọn</p>
                 <p className="text-emerald-600 dark:text-emerald-400">
-                  &gt; SELECT * FROM inventory WHERE variant_id = ? FOR UPDATE
+                  &gt; Số lượng được giữ an toàn trong thời gian xử lý
                 </p>
-                <p className="text-zinc-500">// 2. Compute Haversine distance to warehouses</p>
+                <p className="text-zinc-500">2. Chọn kho phù hợp với địa chỉ nhận</p>
                 <p className="text-blue-600 dark:text-blue-400">
-                  &gt; Distance(UserAddress, WH-HN-01) = 8.4 km
+                  &gt; Kho Hà Nội đang có hàng và gần địa chỉ nhận
                 </p>
-                <p className="text-zinc-500">// 3. Generate Shipment Plan & Dispatch to Shipper</p>
+                <p className="text-zinc-500">3. Tạo vận đơn và phân công tài xế</p>
                 <p className="text-amber-600 dark:text-amber-400">
-                  &gt; Status: OUT_FOR_DELIVERY (VNPOST-HN-883921)
+                  &gt; Vận đơn sẵn sàng giao cho khách
                 </p>
               </div>
             </div>

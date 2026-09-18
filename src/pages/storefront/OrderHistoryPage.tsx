@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, ArrowRight, Clock, CheckCircle2, Truck, XCircle } from 'lucide-react';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
 import { OrderResponse, OrderStatus } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { Badge } from '../../components/ui/Badge';
@@ -11,15 +11,21 @@ export const OrderHistoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('ALL');
 
   useEffect(() => {
-    mockService.getOrders().then(setOrders);
+    ecommerceService.getOrders().then(setOrders);
   }, []);
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
-      case 'DELIVERED':
+      case 'COMPLETED':
         return (
           <Badge variant="brand" size="sm">
-            <CheckCircle2 className="w-3 h-3 mr-1 inline" /> Đã giao thành công
+            <CheckCircle2 className="w-3 h-3 mr-1 inline" /> Hoàn thành
+          </Badge>
+        );
+      case 'PARTIALLY_SHIPPED':
+        return (
+          <Badge variant="info" size="sm">
+            <Truck className="w-3 h-3 mr-1 inline" /> Giao một phần
           </Badge>
         );
       case 'SHIPPED':
@@ -71,7 +77,7 @@ export const OrderHistoryPage: React.FC = () => {
           { key: 'ALL', label: 'Tất cả' },
           { key: 'CONFIRMED', label: 'Đã xác nhận' },
           { key: 'SHIPPED', label: 'Đang giao hàng' },
-          { key: 'DELIVERED', label: 'Hoàn thành' },
+          { key: 'COMPLETED', label: 'Hoàn thành' },
           { key: 'CANCELLED', label: 'Đã hủy' },
         ].map(tab => (
           <button

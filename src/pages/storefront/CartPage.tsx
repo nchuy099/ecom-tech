@@ -1,31 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ShieldCheck, Tag } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, ShieldCheck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
-import { useToast } from '../../context/ToastContext';
 
 export const CartPage: React.FC = () => {
   const { items, itemCount, totalAmount, updateQuantity, removeItem, clearCart } = useCart();
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
-  const [promoCode, setPromoCode] = useState('');
-  const [discount, setDiscount] = useState(0);
-
-  const handleApplyPromo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (promoCode.trim().toUpperCase() === 'ECOMLAB2026') {
-      const disc = Math.round(totalAmount * 0.1);
-      setDiscount(disc);
-      addToast('success', 'Áp dụng voucher thành công!', `Giảm 10% (-${formatCurrency(disc)})`);
-    } else {
-      addToast('error', 'Mã không hợp lệ', 'Hãy thử mã demo: ECOMLAB2026');
-    }
-  };
-
-  const finalTotal = Math.max(0, totalAmount - discount);
+  const finalTotal = Math.max(0, totalAmount);
 
   if (items.length === 0) {
     return (
@@ -137,40 +121,14 @@ export const CartPage: React.FC = () => {
               Tóm Tắt Đơn Hàng
             </h3>
 
-            {/* Promo code */}
-            <form onSubmit={handleApplyPromo} className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-brand-600" />
-                <span>Mã giảm giá (Demo: ECOMLAB2026)</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={e => setPromoCode(e.target.value)}
-                  placeholder="Nhập mã ưu đãi..."
-                  className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs uppercase font-mono focus:outline-none focus:border-brand-500"
-                />
-                <Button size="sm" type="submit" variant="secondary">
-                  Áp dụng
-                </Button>
-              </div>
-            </form>
-
             {/* Calculations */}
-            <div className="space-y-2.5 text-xs pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="space-y-2.5 text-xs">
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                 <span>Tạm tính</span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                   {formatCurrency(totalAmount)}
                 </span>
               </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>Khuyến mãi (10%)</span>
-                  <span>-{formatCurrency(discount)}</span>
-                </div>
-              )}
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                 <span>Vận chuyển đa kho</span>
                 <span className="text-brand-600 font-semibold">Miễn phí toàn quốc</span>
@@ -194,7 +152,7 @@ export const CartPage: React.FC = () => {
 
             <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl text-[11px] text-zinc-500 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-brand-600 shrink-0" />
-              <span>Bảo mật giao dịch tuyệt đối với Spring Security OAuth2 JWT.</span>
+              <span>Thông tin đặt hàng và thanh toán của bạn luôn được bảo vệ.</span>
             </div>
           </div>
         </div>

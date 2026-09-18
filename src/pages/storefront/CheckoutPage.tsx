@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -13,14 +13,26 @@ import {
   Check,
   QrCode,
   Banknote,
+  AlertCircle,
+  X,
+  Search,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { mockService } from '../../services/mockService';
+import { ecommerceService } from '../../services/ecommerceService';
+import { ApiError } from '../../services/api';
 import { formatCurrency, formatDistance } from '../../utils/format';
-import { AddressResponse, ShipmentPlanResponse } from '../../types';
+import {
+  AddressResponse,
+  CheckoutItemAvailabilityResponse,
+  InventoryResponse,
+  ShipmentPlanResponse,
+} from '../../types';
 import { Button } from '../../components/ui/Button';
+
+const INSUFFICIENT_INVENTORY_TEXT =
+  'Một số sản phẩm không đủ hàng tại khu vực giao đã chọn. Vui lòng chọn địa chỉ khác.';
 
 export const CheckoutPage: React.FC = () => {
   const { items, totalAmount, clearCart } = useCart();
@@ -37,7 +49,7 @@ export const CheckoutPage: React.FC = () => {
 
   // Load addresses
   useEffect(() => {
-    mockService.getAddresses().then(data => {
+    ecommerceService.getAddresses().then(data => {
       setAddresses(data);
       const def = data.find(a => a.defaultAddress) || data[0];
       if (def) setSelectedAddressId(def.id);
@@ -46,35 +58,80 @@ export const CheckoutPage: React.FC = () => {
 
   const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0];
 
-  // Simulated shipment plan preview based on selected address
   const [shipmentPlan, setShipmentPlan] = useState<ShipmentPlanResponse[]>([]);
+  const [checkoutItems, setCheckoutItems] = useState<CheckoutItemAvailabilityResponse[]>([]);
+  const [shipmentPlanErrorCode, setShipmentPlanErrorCode] = useState<string>('');
+  const [isLoadingShipmentPlan, setIsLoadingShipmentPlan] = useState(false);
+  const [lookupItem, setLookupItem] = useState<CheckoutItemAvailabilityResponse | null>(null);
+  const [lookupInventory, setLookupInventory] = useState<InventoryResponse[]>([]);
+  const [isLoadingLookupInventory, setIsLoadingLookupInventory] = useState(false);
 
   useEffect(() => {
-    if (selectedAddress) {
-      const isHanoi = selectedAddress.city.includes('Hà Nội');
-      const totalQty = items.reduce((acc, i) => acc + i.quantity, 0);
-
-      if (isHanoi) {
-        setShipmentPlan([
-          {
-            warehouseId: 'wh-01',
-            warehouseName: 'Tổng Kho Hà Nội (Long Biên)',
-            quantity: totalQty,
-            distanceKm: 8.4,
-          },
-        ]);
-      } else {
-        setShipmentPlan([
-          {
-            warehouseId: 'wh-02',
-            warehouseName: 'Tổng Kho TP. Hồ Chí Minh (Tân Bình)',
-            quantity: totalQty,
-            distanceKm: 6.2,
-          },
-        ]);
-      }
+    if (!selectedAddress || items.length === 0) {
+      setShipmentPlan([]);
+      setCheckoutItems([]);
+      setShipmentPlanErrorCode('');
+      setIsLoadingShipmentPlan(false);
+      return;
     }
+
+    setIsLoadingShipmentPlan(true);
+    setShipmentPlanErrorCode('');
+
+    ecommerceService
+      .checkoutPreview(selectedAddress.id)
+      .then(response => {
+        setShipmentPlan(response.shipments || []);
+        setCheckoutItems(response.items || []);
+      })
+      .catch((error: Error) => {
+        setShipmentPlan([]);
+        setCheckoutItems([]);
+        setShipmentPlanErrorCode(
+          error instanceof ApiError
+            ? error.error || 'CHECKOUT_PREVIEW_FAILED'
+            : 'CHECKOUT_PREVIEW_FAILED'
+        );
+      })
+      .finally(() => setIsLoadingShipmentPlan(false));
   }, [selectedAddress, items]);
+
+  const availabilityByVariantId = useMemo(() => {
+    return new Map(checkoutItems.map(item => [item.variantId, item]));
+  }, [checkoutItems]);
+
+  const hasUnavailableItems = checkoutItems.some(item => !item.available);
+
+  const canContinueToPayment =
+    !isLoadingShipmentPlan &&
+    !shipmentPlanErrorCode &&
+    !hasUnavailableItems &&
+    shipmentPlan.length > 0;
+
+  const shipmentPlanErrorText =
+    shipmentPlanErrorCode === 'INSUFFICIENT_INVENTORY'
+      ? INSUFFICIENT_INVENTORY_TEXT
+      : 'Không thể kiểm tra tồn kho cho địa chỉ này. Vui lòng thử lại.';
+
+  const handleOpenInventoryLookup = async (availability: CheckoutItemAvailabilityResponse) => {
+    if (!selectedAddress) return;
+
+    setLookupItem(availability);
+    setLookupInventory([]);
+    setIsLoadingLookupInventory(true);
+
+    try {
+      const response = await ecommerceService.getVariantWarehouseInventory(
+        availability.variantId,
+        selectedAddress.id
+      );
+      setLookupInventory(response);
+    } catch (error: any) {
+      addToast('error', 'Không thể tra cứu kho', error.message || 'Vui lòng thử lại sau.');
+    } finally {
+      setIsLoadingLookupInventory(false);
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
@@ -82,18 +139,29 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
+    if (!canContinueToPayment) {
+      addToast(
+        'error',
+        'Không thể đặt hàng',
+        shipmentPlanErrorCode
+          ? shipmentPlanErrorText
+          : 'Chưa có kế hoạch xuất kho hợp lệ cho địa chỉ đã chọn.'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
-    setLockStatus('Đang thực hiện PESSIMISTIC_WRITE khóa tồn kho...');
+    setLockStatus('Đang giữ hàng cho đơn của bạn...');
 
     await new Promise(r => setTimeout(r, 600));
-    setLockStatus('Đang tối ưu lộ trình điều phối kho (Haversine)...');
+    setLockStatus('Đang chọn kho giao phù hợp...');
 
     await new Promise(r => setTimeout(r, 600));
     setLockStatus('Đang tạo bản ghi đơn hàng và phân luồng vận đơn...');
 
     try {
-      const response = await mockService.checkout(selectedAddress.id, items);
-      clearCart();
+      const response = await ecommerceService.checkout(selectedAddress.id, items);
+      await clearCart();
       addToast(
         'success',
         'Đặt hàng thành công!',
@@ -121,7 +189,7 @@ export const CheckoutPage: React.FC = () => {
 
   const steps = [
     { num: 1, title: 'Địa chỉ nhận hàng' },
-    { num: 2, title: 'Điều phối đa kho' },
+    { num: 2, title: 'Kế hoạch xuất kho' },
     { num: 3, title: 'Phương thức thanh toán' },
     { num: 4, title: 'Xác nhận đặt hàng' },
   ];
@@ -174,7 +242,7 @@ export const CheckoutPage: React.FC = () => {
                     Bước 1: Chọn Địa Chỉ Nhận Hàng
                   </h3>
                   <p className="text-xs text-zinc-500">
-                    Hệ thống sẽ dựa trên tọa độ GPS để tính toán kho hàng gần bạn nhất.
+                    Hệ thống sẽ kiểm tra tồn kho tại khu vực giao của địa chỉ đã chọn.
                   </p>
                 </div>
                 <MapPin className="w-5 h-5 text-brand-600" />
@@ -210,7 +278,7 @@ export const CheckoutPage: React.FC = () => {
                             {addr.addressLine}, {addr.city}
                           </p>
                           <p className="text-[10px] font-mono text-zinc-400 mt-1">
-                            GPS Coordinates: [{addr.latitude}, {addr.longitude}]
+                            Dùng làm địa chỉ nhận hàng và gợi ý kho giao phù hợp
                           </p>
                         </div>
                         {isSelected && <CheckCircle2 className="w-5 h-5 text-brand-500" />}
@@ -220,10 +288,53 @@ export const CheckoutPage: React.FC = () => {
                 })}
               </div>
 
+              <div className="space-y-3">
+                {isLoadingShipmentPlan && (
+                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                    <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                      Đang kiểm tra tồn kho tại khu vực giao...
+                    </span>
+                  </div>
+                )}
+
+                {!isLoadingShipmentPlan && (shipmentPlanErrorCode || hasUnavailableItems) && (
+                  <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/70 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                        Khu vực này không đủ hàng
+                      </p>
+                      <p className="text-[11px] text-rose-600 dark:text-rose-300/90">
+                        {shipmentPlanErrorCode ? shipmentPlanErrorText : INSUFFICIENT_INVENTORY_TEXT}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!isLoadingShipmentPlan &&
+                  !shipmentPlanErrorCode &&
+                  !hasUnavailableItems &&
+                  shipmentPlan.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-900/60 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                        Khu vực này đủ hàng
+                      </p>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-300/90">
+                        Có thể tiếp tục để xem kế hoạch xuất kho chi tiết.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <Button
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => setCurrentStep(2)}
+                  disabled={!canContinueToPayment}
                 >
                   Tiếp tục: Kế hoạch xuất kho
                 </Button>
@@ -231,22 +342,45 @@ export const CheckoutPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 2: Multi-Warehouse Routing */}
+          {/* Step 2: Warehouse plan */}
           {currentStep === 2 && (
             <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                    Bước 2: Phân Bổ Kho Hàng (Haversine Routing)
+                    Bước 2: Kế Hoạch Xuất Kho
                   </h3>
                   <p className="text-xs text-zinc-500">
-                    Thuật toán tự động định tuyến xuất hàng từ kho tối ưu khoảng cách tới bạn.
+                    Đơn chỉ được xuất từ kho phục vụ cùng khu vực với địa chỉ nhận hàng.
                   </p>
                 </div>
                 <Building className="w-5 h-5 text-brand-600" />
               </div>
 
               <div className="space-y-4">
+                {isLoadingShipmentPlan && (
+                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                    <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                      Đang kiểm tra tồn kho theo khu vực giao...
+                    </span>
+                  </div>
+                )}
+
+                {!isLoadingShipmentPlan && (shipmentPlanErrorCode || hasUnavailableItems) && (
+                  <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/70 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                        Không thể giao cho khu vực đã chọn
+                      </p>
+                      <p className="text-[11px] text-rose-600 dark:text-rose-300/90">
+                        {shipmentPlanErrorCode ? shipmentPlanErrorText : INSUFFICIENT_INVENTORY_TEXT}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {shipmentPlan.map((plan, idx) => (
                   <div
                     key={idx}
@@ -261,7 +395,7 @@ export const CheckoutPage: React.FC = () => {
                           {plan.warehouseName}
                         </h4>
                         <p className="text-[11px] text-zinc-500">
-                          Khoảng cách đường chim bay:{' '}
+                          Kho cùng khu vực giao, khoảng cách:{' '}
                           <span className="font-bold text-brand-600 dark:text-brand-400">
                             {formatDistance(plan.distanceKm)}
                           </span>
@@ -289,6 +423,7 @@ export const CheckoutPage: React.FC = () => {
                 <Button
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => setCurrentStep(3)}
+                  disabled={!canContinueToPayment}
                 >
                   Tiếp tục: Thanh toán
                 </Button>
@@ -447,6 +582,7 @@ export const CheckoutPage: React.FC = () => {
                   size="lg"
                   isLoading={isSubmitting}
                   onClick={handlePlaceOrder}
+                  disabled={!canContinueToPayment}
                   className="font-bold px-8"
                 >
                   Xác Nhận Đặt Hàng
@@ -463,27 +599,67 @@ export const CheckoutPage: React.FC = () => {
               Đơn hàng của bạn ({items.length} món)
             </h4>
 
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-72 overflow-y-auto">
-              {items.map(item => (
-                <div key={item.id} className="py-3 flex items-center gap-3">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.productName}
-                    className="w-12 h-12 rounded-lg object-cover bg-zinc-100 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 line-clamp-1">
-                      {item.productName}
-                    </p>
-                    <p className="text-[11px] text-zinc-400">
-                      {formatCurrency(item.price)} × {item.quantity}
-                    </p>
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-72 overflow-y-auto overflow-x-hidden pr-1">
+              {items.map(item => {
+                const availability = availabilityByVariantId.get(item.variantId);
+                const isUnavailable = availability && !availability.available;
+
+                return (
+                  <div key={item.id} className="py-3 space-y-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.productName}
+                        className="w-12 h-12 rounded-lg object-cover bg-zinc-100 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 line-clamp-1">
+                          {item.productName}
+                        </p>
+                        <p className="text-[11px] text-zinc-400">
+                          {formatCurrency(item.price)} × {item.quantity}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-brand-600">
+                          {formatCurrency(item.lineTotal)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="ml-[60px] flex flex-wrap items-center gap-2">
+                      <div className="shrink-0">
+                        {isLoadingShipmentPlan && (
+                          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                            Đang kiểm tra
+                          </span>
+                        )}
+
+                        {!isLoadingShipmentPlan && availability && !isUnavailable && (
+                          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            Đủ hàng
+                          </span>
+                        )}
+
+                        {!isLoadingShipmentPlan && isUnavailable && (
+                          <span className="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-500">
+                            Thiếu hàng
+                          </span>
+                        )}
+                      </div>
+
+                      {availability && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenInventoryLookup(availability)}
+                          className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2 py-1 text-[10px] font-bold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          <Search className="w-3 h-3" />
+                          Tra cứu kho
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-brand-600">
-                    {formatCurrency(item.lineTotal)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2 text-xs">
@@ -505,11 +681,93 @@ export const CheckoutPage: React.FC = () => {
 
             <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl text-[11px] text-zinc-500 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-brand-600 shrink-0" />
-              <span>Khóa tồn kho chống oversell (Pessimistic Write Lock)</span>
+              <span>Giữ hàng an toàn để tránh bán vượt số lượng</span>
             </div>
           </div>
         </div>
       </div>
+
+      {lookupItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl">
+            <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  Tra cứu tồn kho
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  {lookupItem.productName} · {lookupItem.sku}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLookupItem(null)}
+                className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 max-h-[420px] overflow-y-auto">
+              {isLoadingLookupInventory && (
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                  <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                    Đang lấy tồn kho...
+                  </span>
+                </div>
+              )}
+
+              {!isLoadingLookupInventory && lookupInventory.length === 0 && (
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 text-xs text-zinc-500">
+                  Chưa có kho nào còn dữ liệu tồn cho sản phẩm này.
+                </div>
+              )}
+
+              {!isLoadingLookupInventory &&
+                lookupInventory.map(inventory => (
+                  <div
+                    key={inventory.id}
+                    className={`p-4 rounded-2xl border ${
+                      inventory.deliverableToSelectedAddress
+                        ? 'border-brand-500/70 bg-brand-50/30 dark:bg-brand-950/20'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                          {inventory.warehouseName}
+                        </p>
+                        <p className="text-[11px] text-zinc-500 mt-1">
+                          {inventory.warehousePriorityArea || 'Khu vực kho'}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                          inventory.deliverableToSelectedAddress
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        {inventory.deliverableToSelectedAddress ? 'Cùng khu vực' : 'Khác khu vực'}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 text-[11px]">
+                      <div className="rounded-xl bg-white/70 dark:bg-zinc-900/60 p-3">
+                        <p className="text-zinc-500">Tồn khả dụng</p>
+                        <p className="text-sm font-black text-brand-600">
+                          {inventory.availableQuantity} sp
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

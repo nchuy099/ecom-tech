@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   SlidersHorizontal,
@@ -7,14 +7,16 @@ import {
   List,
   RotateCcw,
   Check,
-  ChevronDown,
 } from 'lucide-react';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from '../../services/mockData';
+import { ecommerceService } from '../../services/ecommerceService';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
+import { CategoryResponse, ProductSummaryResponse } from '../../types';
+import { SearchSuggestions } from '../../components/storefront/SearchSuggestions';
 
 export const CatalogPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryParam = searchParams.get('q') || '';
@@ -26,6 +28,9 @@ export const CatalogPage: React.FC = () => {
   const [maxPrice, setMaxPrice] = useState<number>(60000000);
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'rating'>('default');
   const [isGridView, setIsGridView] = useState(true);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
+  const [isKeywordFocused, setIsKeywordFocused] = useState(false);
 
   // Sync state if url changes
   React.useEffect(() => {
@@ -33,8 +38,25 @@ export const CatalogPage: React.FC = () => {
     if (categoryParam) setSelectedCategory(categoryParam);
   }, [queryParam, categoryParam]);
 
+  React.useEffect(() => {
+    ecommerceService.getCategories().then(setCategories);
+  }, []);
+
+  React.useEffect(() => {
+    ecommerceService
+      .getProducts({
+        keyword,
+        categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
+        maxPrice,
+        inStockOnly,
+        sort: sortBy,
+        size: 60,
+      })
+      .then(page => setProducts(page.items));
+  }, [keyword, selectedCategory, maxPrice, inStockOnly, sortBy]);
+
   const filteredProducts = useMemo(() => {
-    let result = [...MOCK_PRODUCTS];
+    let result = [...products];
 
     if (keyword.trim()) {
       const q = keyword.toLowerCase();
@@ -65,7 +87,7 @@ export const CatalogPage: React.FC = () => {
     }
 
     return result;
-  }, [keyword, selectedCategory, inStockOnly, maxPrice, sortBy]);
+  }, [products, keyword, selectedCategory, inStockOnly, maxPrice, sortBy]);
 
   const handleResetFilters = () => {
     setKeyword('');
@@ -74,6 +96,14 @@ export const CatalogPage: React.FC = () => {
     setMaxPrice(60000000);
     setSortBy('default');
     setSearchParams({});
+  };
+
+  const handleViewAllSuggestions = (nextKeyword: string) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('q', nextKeyword);
+    setKeyword(nextKeyword);
+    setIsKeywordFocused(false);
+    setSearchParams(nextSearchParams);
   };
 
   return (
@@ -117,8 +147,20 @@ export const CatalogPage: React.FC = () => {
                   type="text"
                   value={keyword}
                   onChange={e => setKeyword(e.target.value)}
+                  onFocus={() => setIsKeywordFocused(true)}
+                  onBlur={() => window.setTimeout(() => setIsKeywordFocused(false), 120)}
                   placeholder="MacBook, Titan, Sony..."
                   className="w-full bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-brand-500"
+                />
+                <SearchSuggestions
+                  keyword={keyword}
+                  isOpen={isKeywordFocused}
+                  onSelectProduct={product => {
+                    setIsKeywordFocused(false);
+                    navigate(`/products/${product.id}`);
+                  }}
+                  onViewAll={handleViewAllSuggestions}
+                  className="z-40"
                 />
               </div>
             </div>
@@ -140,7 +182,7 @@ export const CatalogPage: React.FC = () => {
                   <span>Tất cả ngành hàng</span>
                   {selectedCategory === 'all' && <Check className="w-3.5 h-3.5" />}
                 </button>
-                {MOCK_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
@@ -288,10 +330,10 @@ export const CatalogPage: React.FC = () => {
                 size="md"
                 className="font-mono text-xs"
               >
-                Tải Thêm Sản Phẩm (Cursor Keyset Pagination)
+                Tải Thêm Sản Phẩm
               </Button>
               <p className="text-[11px] text-zinc-400 mt-2">
-                Trang được tối ưu hóa chỉ mục SQL `idx_product_cursor` tránh suy giảm hiệu năng OFFSET
+                Danh sách sẽ tiếp tục tải thêm sản phẩm phù hợp với bộ lọc hiện tại.
               </p>
             </div>
           )}

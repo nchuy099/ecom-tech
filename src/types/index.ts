@@ -110,8 +110,27 @@ export interface WarehouseResponse {
   code: string;
   name: string;
   addressLine: string;
+  priorityArea: string;
   latitude: number;
   longitude: number;
+  active: boolean;
+  shippingZones?: WarehouseShippingZoneResponse[];
+}
+
+export interface ShippingZoneResponse {
+  id: string;
+  code: string;
+  name: string;
+  matchedCities: string[];
+  active: boolean;
+}
+
+export interface WarehouseShippingZoneResponse {
+  id: string;
+  shippingZoneId: string;
+  shippingZoneCode: string;
+  shippingZoneName: string;
+  priority: number;
   active: boolean;
 }
 
@@ -119,15 +138,23 @@ export interface InventoryResponse {
   id: string;
   warehouseId: string;
   warehouseName: string;
+  warehousePriorityArea?: string;
   variantId: string;
   sku: string;
   productName: string;
   availableQuantity: number;
   reservedQuantity: number;
+  deliverableToSelectedAddress?: boolean;
 }
 
 // Order, Shipment, and Checkout Types
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus =
+  | 'PENDING_PAYMENT'
+  | 'CONFIRMED'
+  | 'PARTIALLY_SHIPPED'
+  | 'SHIPPED'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export interface OrderItemResponse {
   id: string;
@@ -161,11 +188,23 @@ export interface ShipmentPlanResponse {
   distanceKm: number;
 }
 
+export interface CheckoutItemAvailabilityResponse {
+  variantId: string;
+  sku: string;
+  productName: string;
+  variantName: string;
+  requestedQuantity: number;
+  availableInSelectedZone: number;
+  missingQuantity: number;
+  available: boolean;
+}
+
 export interface CheckoutResponse {
   orderId: string;
   orderNumber: string;
   totalAmount: number;
   shipments: ShipmentPlanResponse[];
+  items: CheckoutItemAvailabilityResponse[];
 }
 
 export type ShipmentStatus =
@@ -198,6 +237,10 @@ export interface ShipmentResponse {
   recipientName: string;
   recipientPhone: string;
   deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  warehouseLatitude?: number;
+  warehouseLongitude?: number;
   distanceKm: number;
   updatedAt: string;
   timeline?: TrackingEvent[];

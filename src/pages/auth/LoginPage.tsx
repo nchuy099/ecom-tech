@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Layers, ArrowRight, User, Shield, Truck, Lock } from 'lucide-react';
+import { Layers, ArrowRight, User, Shield, Truck } from 'lucide-react';
 import { useAuth, DEMO_PROFILES } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -12,14 +12,14 @@ export const LoginPage: React.FC = () => {
   const { addToast } = useToast();
 
   const [email, setEmail] = useState('customer@ecomlab.com');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('Demo@123456');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, 'CUSTOMER');
+      await login(email, password);
       addToast('success', 'Đăng nhập thành công!', `Chào mừng ${email}`);
       navigate('/');
     } catch (err: any) {
@@ -29,8 +29,8 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = (roleKey: 'CUSTOMER' | 'ADMIN' | 'SHIPPER') => {
-    switchRole(roleKey);
+  const handleQuickLogin = async (roleKey: 'CUSTOMER' | 'ADMIN' | 'SHIPPER') => {
+    await switchRole(roleKey);
     addToast('success', `Đăng nhập nhanh: ${roleKey}`, 'Tài khoản demo đã được kích hoạt');
     if (roleKey === 'ADMIN') navigate('/admin');
     else if (roleKey === 'SHIPPER') navigate('/shipper');
@@ -54,7 +54,7 @@ export const LoginPage: React.FC = () => {
             Đăng Nhập Tài Khoản
           </h2>
           <p className="text-xs text-zinc-500">
-            Tích hợp chuẩn Spring Security OAuth2 Resource Server & JWT Token
+            Truy cập tài khoản để mua sắm, quản lý đơn hàng và theo dõi giao nhận.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export const LoginPage: React.FC = () => {
           {/* Quick Demo Access Buttons */}
           <div className="space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-center">
-              1-Click Đăng Nhập Nhanh (Demo Access)
+              Đăng nhập nhanh tài khoản mẫu
             </p>
             <div className="grid grid-cols-3 gap-2">
               <button

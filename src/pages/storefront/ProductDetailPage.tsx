@@ -13,8 +13,8 @@ import {
   Warehouse,
   Info,
 } from 'lucide-react';
-import { MOCK_PRODUCTS, MOCK_PRODUCT_DETAILS, MOCK_WAREHOUSES } from '../../services/mockData';
-import { ProductVariantDetailResponse } from '../../types';
+import { ecommerceService } from '../../services/ecommerceService';
+import { InventoryResponse, ProductVariantDetailResponse } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -26,34 +26,47 @@ export const ProductDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
-  const product = MOCK_PRODUCTS.find(p => p.id === id) || MOCK_PRODUCTS[0];
-  const variants: ProductVariantDetailResponse[] =
-    MOCK_PRODUCT_DETAILS[product.id] || [
-      {
-        productId: product.id,
-        productName: product.name,
-        variantId: product.variantId,
-        sku: product.sku,
-        variantName: product.variantName,
-        price: product.price,
-        availableQuantity: product.availableQuantity,
-        reservedQuantity: product.reservedQuantity,
-        imageUrl: product.imageUrl,
-        description: 'Sản phẩm cao cấp phân phối chính hãng kèm chế độ bảo hành vàng.',
-      },
-    ];
-
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariantDetailResponse>(variants[0]);
+  const [variants, setVariants] = useState<ProductVariantDetailResponse[]>([]);
+  const [inventory, setInventory] = useState<InventoryResponse[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariantDetailResponse | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'warehouses'>('desc');
   const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
 
   useEffect(() => {
-    if (variants.length > 0) {
-      setSelectedVariant(variants[0]);
+    if (!id) return;
+
+    ecommerceService.getProductDetail(id).then(data => {
+      setVariants(data);
+      setSelectedVariant(data[0] || null);
       setQuantity(1);
-    }
+    });
+
+    ecommerceService.getProductInventory(id).then(setInventory).catch(() => setInventory([]));
   }, [id]);
+
+  if (!selectedVariant) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          Không tìm thấy sản phẩm
+        </h2>
+        <Button leftIcon={<ArrowLeft className="w-4 h-4" />} onClick={() => navigate('/catalog')}>
+          Quay lại catalog
+        </Button>
+      </div>
+    );
+  }
+
+  const product = {
+    id: selectedVariant.productId,
+    name: selectedVariant.productName,
+    categoryName: 'Sản phẩm',
+    imageUrl: selectedVariant.imageUrl,
+    rating: 4.9,
+    reviewCount: 120,
+    badge: undefined,
+  };
 
   const handleAddToCart = () => {
     addToCart(product, selectedVariant, quantity);
@@ -324,7 +337,7 @@ export const ProductDetailPage: React.FC = () => {
                 'Sản phẩm được gia công tỉ mỉ với tiêu chuẩn khắt khe, ứng dụng công nghệ hiện đại đem lại hiệu suất sử dụng vượt trội.'}
             </p>
             <p>
-              Toàn bộ dữ liệu sản phẩm, biến thể và số lượng tồn kho được đồng bộ hoá thông qua hệ thống Cache Caffeine của Spring Boot kết hợp cơ chế kiểm tra tính hợp lệ dữ liệu chặt chẽ.
+              Thông tin sản phẩm, phiên bản và số lượng tồn kho được cập nhật thường xuyên để bạn chọn đúng mẫu còn hàng.
             </p>
           </div>
         )}
@@ -356,34 +369,42 @@ export const ProductDetailPage: React.FC = () => {
       <Modal
         isOpen={isWarehouseModalOpen}
         onClose={() => setIsWarehouseModalOpen(false)}
-        title="Tồn Kho Đa Điểm (Multi-Warehouse Inventory)"
+        title="Tồn Kho Theo Khu Vực"
         description="Mạng lưới kho hàng phân tán phục vụ luồng điều phối giao nhận"
       >
         <div className="space-y-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-700 dark:text-blue-300 text-xs flex items-start gap-2">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              Thuật toán Haversine sẽ tính khoảng cách từ tọa độ của bạn tới từng kho để xuất hàng từ kho gần nhất có sẵn hàng.
+              Hệ thống sẽ ưu tiên kho còn hàng và phù hợp nhất với địa chỉ nhận của bạn.
             </span>
           </div>
 
           <div className="space-y-3">
-            {MOCK_WAREHOUSES.map((wh, idx) => (
+            {inventory.map((item, idx) => (
               <div
-                key={wh.id}
+                key={item.id}
                 className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between"
               >
                 <div>
-                  <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{wh.name}</h5>
-                  <p className="text-[11px] text-zinc-400">{wh.addressLine}</p>
+                  <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {item.warehouseName}
+                  </h5>
+                  <p className="text-[11px] text-zinc-400">
+                    SKU {item.sku} • Đang giữ {item.reservedQuantity} sản phẩm
+                  </p>
                 </div>
                 <div className="text-right">
-                  <Badge variant={idx === 0 ? 'brand' : 'neutral'} size="sm">
-                    {idx === 0 ? 'Kho chính: Còn hàng' : 'Dự phòng: Còn hàng'}
+                  <Badge variant={item.availableQuantity > 0 ? 'brand' : 'neutral'} size="sm">
+                    {idx === 0 ? 'Ưu tiên' : 'Dự phòng'}: còn {item.availableQuantity}
                   </Badge>
                 </div>
               </div>
             ))}
+
+            {inventory.length === 0 && (
+              <p className="text-xs text-zinc-500">Chưa có dữ liệu tồn kho cho sản phẩm này.</p>
+            )}
           </div>
         </div>
       </Modal>
