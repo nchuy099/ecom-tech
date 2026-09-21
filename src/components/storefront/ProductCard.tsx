@@ -50,13 +50,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           loading="lazy"
         />
 
-        {/* Top Badges */}
+        {/* Stock status */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-          {product.badge && (
-            <Badge variant="accent" size="sm">
-              {product.badge}
-            </Badge>
-          )}
           {isOutOfStock ? (
             <Badge variant="danger" size="sm">
               Hết hàng

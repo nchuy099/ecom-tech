@@ -60,7 +60,7 @@ export const AdminShipmentsPage: React.FC = () => {
       </div>
 
       <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs">
+        <table className="responsive-table w-full text-left text-xs">
           <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-400 uppercase font-mono tracking-wider text-[10px] border-b border-zinc-200 dark:border-zinc-800">
             <tr>
               <th className="py-3 px-4">Mã Vận Đơn</th>
@@ -79,23 +79,23 @@ export const AdminShipmentsPage: React.FC = () => {
 
               return (
                 <tr key={s.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                  <td data-label="Mã vận đơn" className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
                     {s.trackingNumber}
                   </td>
-                  <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{s.warehouseName}</td>
-                  <td className="py-3 px-4">
+                  <td data-label="Kho xuất hàng" className="py-3 px-4 text-zinc-600 dark:text-zinc-400">{s.warehouseName}</td>
+                  <td data-label="Người nhận" className="py-3 px-4">
                     <p className="font-bold text-zinc-900 dark:text-zinc-100">{s.recipientName}</p>
                     <p className="text-[11px] text-zinc-400 line-clamp-1">{s.deliveryAddress}</p>
                   </td>
-                  <td className="py-3 px-4 font-mono font-semibold text-brand-600 dark:text-brand-400">
+                  <td data-label="Cự ly" className="py-3 px-4 font-mono font-semibold text-brand-600 dark:text-brand-400">
                     {formatDistance(s.distanceKm)}
                   </td>
-                  <td className="py-3 px-4">
+                  <td data-label="Trạng thái" className="py-3 px-4">
                     <Badge variant={s.status === 'DELIVERED' ? 'brand' : 'warning'} size="sm">
                       {s.status}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4 text-zinc-700 dark:text-zinc-300">
+                  <td data-label="Shipper" className="py-3 px-4 text-zinc-700 dark:text-zinc-300">
                     {s.shipperName ? (
                       <span className="font-medium text-emerald-600 dark:text-emerald-400">
                         {s.shipperName}
@@ -104,7 +104,7 @@ export const AdminShipmentsPage: React.FC = () => {
                       <span className="text-zinc-400 italic">Chưa phân công</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td data-label="Điều phối" className="py-3 px-4 text-right">
                     {canAssignShipper && (
                       <Button
                         variant="outline"
@@ -159,11 +159,11 @@ export const AdminShipmentsPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsAssignModalOpen(false)}>
+            <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+              <Button className="w-full sm:w-auto" variant="outline" size="sm" type="button" onClick={() => setIsAssignModalOpen(false)}>
                 Hủy
               </Button>
-              <Button size="sm" type="submit">
+              <Button className="w-full sm:w-auto" size="sm" type="submit">
                 Xác Nhận Phân Công
               </Button>
             </div>

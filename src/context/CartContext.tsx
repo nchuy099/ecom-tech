@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { CartItemResponse, ProductSummaryResponse, ProductVariantDetailResponse } from '../types';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
@@ -8,10 +8,6 @@ interface CartContextType {
   items: CartItemResponse[];
   itemCount: number;
   totalAmount: number;
-  isCartOpen: boolean;
-  openCart: () => void;
-  closeCart: () => void;
-  toggleCart: () => void;
   addToCart: (
     product: ProductSummaryResponse | { id: string; name: string },
     variant: ProductVariantDetailResponse | { variantId: string; variantName: string; sku: string; price: number; imageUrl?: string; availableQuantity: number },
@@ -27,7 +23,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItemResponse[]>([]);
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const { addToast } = useToast();
   const { isAuthenticated, role } = useAuth();
 
@@ -46,10 +41,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce((sum, item) => sum + item.lineTotal, 0);
 
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
-  const toggleCart = () => setIsCartOpen(prev => !prev);
-
   const addToCart = async (
     product: ProductSummaryResponse | { id: string; name: string },
     variant: ProductVariantDetailResponse | { variantId: string; variantName: string; sku: string; price: number; imageUrl?: string; availableQuantity: number },
@@ -63,7 +54,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'Đã thêm vào giỏ hàng!',
       `${product.name} (${variant.variantName}) x${quantity}`
     );
-    setIsCartOpen(true);
   };
 
   const updateQuantity = async (itemId: string, quantity: number) => {
@@ -95,10 +85,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         items,
         itemCount,
         totalAmount,
-        isCartOpen,
-        openCart,
-        closeCart,
-        toggleCart,
         addToCart,
         updateQuantity,
         removeItem,

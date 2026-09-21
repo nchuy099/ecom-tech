@@ -3,8 +3,139 @@
 @tailwind utilities;
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    overflow-x: clip;
+  }
+
   body {
     @apply antialiased bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+    min-width: 0;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+  }
+}
+
+/* Prevent iOS Safari from zooming when a compact control receives focus. */
+input:not([type='range']),
+select,
+textarea {
+  font-size: max(16px, 1rem);
+}
+
+/* Mobile cards preserve table semantics while making each record readable. */
+.responsive-table,
+.responsive-table tbody,
+.responsive-table tr,
+.responsive-table td {
+  display: block;
+  width: 100%;
+}
+
+.responsive-table thead {
+  display: none;
+}
+
+.responsive-table tbody {
+  padding: 0.75rem;
+}
+
+.responsive-table tr {
+  margin-block: 0.75rem;
+  overflow: clip;
+  border: 1px solid rgb(228 228 231);
+  border-radius: 0.75rem;
+}
+
+.dark .responsive-table tr {
+  border-color: rgb(63 63 70);
+}
+
+.responsive-table td {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0.75rem;
+  text-align: end;
+}
+
+.responsive-table td::before {
+  content: attr(data-label);
+  flex: 0 0 auto;
+  color: rgb(113 113 122);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.responsive-table td:first-child {
+  align-items: flex-start;
+  text-align: start;
+}
+
+.responsive-table td:first-child > div {
+  min-width: 0;
+}
+
+.responsive-table td:last-child {
+  justify-content: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(228 228 231);
+}
+
+.dark .responsive-table td:last-child {
+  border-color: rgb(63 63 70);
+}
+
+@media (min-width: 768px) {
+  .responsive-table {
+    display: table;
+  }
+
+  .responsive-table thead {
+    display: table-header-group;
+  }
+
+  .responsive-table tbody {
+    display: table-row-group;
+    padding: 0;
+  }
+
+  .responsive-table tr {
+    display: table-row;
+    margin: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .responsive-table td {
+    display: table-cell;
+    width: auto;
+    padding: 0.75rem 1rem;
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  .responsive-table td::before {
+    content: none;
+  }
+
+  .responsive-table td:last-child {
+    padding-top: 0.75rem;
+    border-top: 0;
+    text-align: end;
   }
 }
 

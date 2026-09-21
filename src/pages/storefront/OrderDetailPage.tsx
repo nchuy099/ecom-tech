@@ -30,6 +30,7 @@ export const OrderDetailPage: React.FC = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnReason, setReturnReason] = useState('');
+  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (id) {
@@ -95,14 +96,25 @@ export const OrderDetailPage: React.FC = () => {
       return;
     }
 
+    const items = Object.entries(returnQuantities)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([orderItemId, quantity]) => ({ orderItemId, quantity }));
+    if (!items.length) {
+      addToast('error', 'Chưa chọn sản phẩm', 'Chọn ít nhất một sản phẩm và số lượng cần trả.');
+      return;
+    }
+
     try {
-      await ecommerceService.createReturn(order.id, returnReason.trim());
+      await ecommerceService.createReturn(order.id, returnReason.trim(), items);
       setIsReturnModalOpen(false);
+      setReturnReason('');
+      setReturnQuantities({});
       addToast(
         'success',
         'Đã gửi yêu cầu đổi trả',
         'Bộ phận hậu cần sẽ liên hệ xác nhận trong 24 giờ làm việc.'
       );
+      window.setTimeout(() => window.location.reload(), 500);
     } catch (err: any) {
       addToast('error', 'Không thể tạo yêu cầu đổi trả', err.message || 'Lỗi hệ thống');
     }
@@ -150,7 +162,10 @@ export const OrderDetailPage: React.FC = () => {
               variant="outline"
               size="sm"
               leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-              onClick={() => setIsReturnModalOpen(true)}
+              onClick={() => {
+                setReturnQuantities({});
+                setIsReturnModalOpen(true);
+              }}
             >
               Yêu Cầu Đổi Trả
             </Button>
@@ -174,8 +189,8 @@ export const OrderDetailPage: React.FC = () => {
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {order.items.map(item => (
-                <div key={item.id} className="py-4 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-4">
+                <div key={item.id} className="flex flex-col gap-3 py-4 text-xs min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
                     <img
                       src={
                         item.imageUrl ||
@@ -191,7 +206,7 @@ export const OrderDetailPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-right">
+                  <div className="self-end text-right min-[420px]:self-auto">
                     <p className="font-bold text-brand-600 dark:text-brand-400">
                       {formatCurrency(item.subtotal)}
                     </p>
@@ -201,7 +216,7 @@ export const OrderDetailPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-xs">
+            <div className="flex flex-col gap-1 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <span className="text-zinc-500">Tổng thanh toán:</span>
               <span className="text-base font-black text-brand-600 dark:text-brand-400">
                 {formatCurrency(order.totalAmount)}
@@ -350,6 +365,28 @@ export const OrderDetailPage: React.FC = () => {
         description="Gửi yêu cầu đổi trả để bộ phận hậu cần kiểm tra và liên hệ lại"
       >
         <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">Sản phẩm cần trả</p>
+            <div className="max-h-56 divide-y overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
+              {order.items.map(item => {
+                const quantity = returnQuantities[item.id] || 0;
+                return (
+                  <div key={item.id} className="flex min-w-0 items-center gap-3 p-3">
+                    <img src={item.imageUrl || 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=200&q=80'} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-zinc-900 dark:text-zinc-100">{item.productName}</p>
+                      <p className="text-[11px] text-zinc-500">{item.variantName} · Đã mua: {item.quantity}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5" aria-label={`Số lượng trả ${item.productName}`}>
+                      <button type="button" className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-base font-bold disabled:opacity-40 dark:border-zinc-700" disabled={quantity === 0} onClick={() => setReturnQuantities(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}>−</button>
+                      <span className="w-5 text-center text-xs font-bold tabular-nums">{quantity}</span>
+                      <button type="button" className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-base font-bold disabled:opacity-40 dark:border-zinc-700" disabled={quantity >= item.quantity} onClick={() => setReturnQuantities(prev => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1) }))}>+</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
               Lý do đổi trả:
@@ -363,11 +400,11 @@ export const OrderDetailPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" size="sm" onClick={() => setIsReturnModalOpen(false)}>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => setIsReturnModalOpen(false)}>
               Đóng
             </Button>
-            <Button size="sm" onClick={handleCreateReturn}>
+            <Button className="w-full sm:w-auto" size="sm" onClick={handleCreateReturn}>
               Gửi yêu cầu
             </Button>
           </div>

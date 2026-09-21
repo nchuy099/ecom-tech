@@ -59,7 +59,6 @@ export interface ProductSummaryResponse {
   imageUrl?: string;
   rating?: number;
   reviewCount?: number;
-  badge?: string;
 }
 
 export interface ProductVariantDetailResponse {
@@ -154,6 +153,9 @@ export type OrderStatus =
   | 'PARTIALLY_SHIPPED'
   | 'SHIPPED'
   | 'COMPLETED'
+  | 'RETURN_REQUESTED'
+  | 'PARTIALLY_RETURNED'
+  | 'RETURNED'
   | 'CANCELLED';
 
 export interface OrderItemResponse {
@@ -224,6 +226,14 @@ export interface TrackingEvent {
   note: string;
 }
 
+export interface ShipmentItemResponse {
+  id: string;
+  returnItemId?: string;
+  sku: string;
+  name: string;
+  quantity: number;
+}
+
 export interface ShipmentResponse {
   id: string;
   orderId: string;
@@ -233,6 +243,10 @@ export interface ShipmentResponse {
   shipperId?: string;
   shipperName?: string;
   status: ShipmentStatus;
+  type?: 'OUTBOUND' | 'RETURN';
+  returnId?: string;
+  warehouseReceivedAt?: string;
+  items?: ShipmentItemResponse[];
   trackingNumber: string;
   recipientName: string;
   recipientPhone: string;
@@ -246,12 +260,28 @@ export interface ShipmentResponse {
   timeline?: TrackingEvent[];
 }
 
-export type ReturnStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'REFUNDED';
+export type ReturnStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'RESTOCKED' | 'REFUNDED';
+
+export interface ReturnItemResponse {
+  id: string;
+  orderItemId: string;
+  sku: string;
+  name: string;
+  unitPrice: number;
+  requestedQuantity: number;
+  receivedQuantity: number;
+  restockedQuantity: number;
+}
 
 export interface ReturnResponse {
   id: string;
   orderId: string;
   status: ReturnStatus;
   reason: string;
+  decisionNote?: string;
   createdAt?: string;
+  updatedAt?: string;
+  refundableAmount?: number;
+  items: ReturnItemResponse[];
+  shipments: ShipmentResponse[];
 }

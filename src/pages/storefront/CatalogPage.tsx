@@ -7,6 +7,7 @@ import {
   List,
   RotateCcw,
   Check,
+  X,
 } from 'lucide-react';
 import { ecommerceService } from '../../services/ecommerceService';
 import { ProductCard } from '../../components/storefront/ProductCard';
@@ -31,6 +32,8 @@ export const CatalogPage: React.FC = () => {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
   const [isKeywordFocused, setIsKeywordFocused] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const activeFilterCount = Number(Boolean(keyword.trim())) + Number(selectedCategory !== 'all') + Number(inStockOnly) + Number(maxPrice < 60000000);
 
   // Sync state if url changes
   React.useEffect(() => {
@@ -119,21 +122,26 @@ export const CatalogPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {isFiltersOpen && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsFiltersOpen(false)}
+            aria-label="Đóng bộ lọc"
+          />
+        )}
         {/* Left Filter Sidebar */}
-        <aside className="space-y-6">
+        <aside className={`${isFiltersOpen ? 'fixed inset-y-0 left-0 z-50 block w-[min(24rem,100vw)] overflow-y-auto bg-zinc-50 p-4 pt-[max(1rem,env(safe-area-inset-top))] dark:bg-zinc-950' : 'hidden'} lg:static lg:z-auto lg:block lg:w-auto lg:overflow-visible lg:bg-transparent lg:p-0`}>
           <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2 font-bold text-sm text-zinc-900 dark:text-zinc-100">
                 <SlidersHorizontal className="w-4 h-4 text-brand-600" />
                 <span>Bộ Lọc Nâng Cao</span>
               </div>
-              <button
-                onClick={handleResetFilters}
-                className="text-xs text-zinc-400 hover:text-brand-600 flex items-center gap-1 transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Đặt lại</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleResetFilters} className="text-xs text-zinc-400 hover:text-brand-600 flex min-h-11 items-center gap-1 transition-colors"><RotateCcw className="w-3 h-3" /><span>Đặt lại</span></button>
+                <button type="button" onClick={() => setIsFiltersOpen(false)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 lg:hidden" aria-label="Đóng bộ lọc"><X className="h-4 w-4" /></button>
+              </div>
             </div>
 
             {/* Keyword search in filter */}
@@ -251,7 +259,15 @@ export const CatalogPage: React.FC = () => {
               sản phẩm phù hợp
             </div>
 
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen(true)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 lg:hidden"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+              </button>
               {/* Sort selector */}
               <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                 <span>Sắp xếp:</span>

@@ -45,8 +45,8 @@ export const CartPage: React.FC = () => {
           <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden shadow-sm">
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {items.map(item => (
-                <div key={item.id} className="p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                  <div className="flex gap-4 items-center">
+                <div key={item.id} className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
+                  <div className="flex min-w-0 gap-4 items-center">
                     <img
                       src={item.imageUrl || 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=400&q=80'}
                       alt={item.productName}
@@ -64,7 +64,7 @@ export const CartPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between w-full sm:w-auto gap-6 mt-2 sm:mt-0">
+                  <div className="mt-2 flex w-full items-center justify-between gap-3 sm:mt-0 sm:w-auto sm:gap-6">
                     <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800 p-1">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}

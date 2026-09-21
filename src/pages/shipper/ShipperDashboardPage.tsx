@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   ClipboardList,
   TrendingUp,
@@ -174,6 +175,12 @@ export const ShipperDashboardPage: React.FC = () => {
   const [qrUploadLoading, setQrUploadLoading] = useState(false);
   const [qrUploadFileName, setQrUploadFileName] = useState('');
   const [qrUploadError, setQrUploadError] = useState('');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraFrameRef = useRef<number | null>(null);
   const { addToast } = useToast();
   const { user, logout } = useAuth();
 
@@ -310,21 +317,115 @@ export const ShipperDashboardPage: React.FC = () => {
     }
   };
 
+  const stopCamera = useCallback(() => {
+    if (cameraFrameRef.current !== null) {
+      cancelAnimationFrame(cameraFrameRef.current);
+      cameraFrameRef.current = null;
+    }
+
+    cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  useEffect(() => {
+    if (!scannerOpen || !cameraActive) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const startCamera = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Trình duyệt không hỗ trợ camera. Bạn có thể tải ảnh QR lên.');
+        setCameraActive(false);
+        return;
+      }
+
+      try {
+        setCameraError('');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+
+        if (cancelled || !cameraVideoRef.current) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+        const video = cameraVideoRef.current;
+        video.srcObject = stream;
+        await video.play();
+
+        const { default: jsQR } = await import('jsqr');
+        const scanFrame = () => {
+          if (cancelled || !cameraVideoRef.current || !cameraCanvasRef.current) {
+            return;
+          }
+
+          const currentVideo = cameraVideoRef.current;
+          const canvas = cameraCanvasRef.current;
+          if (currentVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            canvas.width = currentVideo.videoWidth;
+            canvas.height = currentVideo.videoHeight;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (context && canvas.width > 0 && canvas.height > 0) {
+              context.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
+              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+              const result = jsQR(imageData.data, imageData.width, imageData.height);
+              if (result?.data) {
+                const decodedValue = result.data.trim();
+                setTrackingNumber(extractTrackingNumber(decodedValue));
+                stopCamera();
+                void handleLookup(decodedValue);
+                return;
+              }
+            }
+          }
+
+          cameraFrameRef.current = requestAnimationFrame(scanFrame);
+        };
+
+        cameraFrameRef.current = requestAnimationFrame(scanFrame);
+      } catch {
+        setCameraError('Không thể mở camera. Hãy cấp quyền camera hoặc tải ảnh QR lên.');
+        setCameraActive(false);
+      }
+    };
+
+    void startCamera();
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [cameraActive, scannerOpen, stopCamera]);
+
+  const closeScanner = () => {
+    stopCamera();
+    setScannerOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-100 pb-20 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="sticky top-0 z-30 border-b border-emerald-500/20 bg-emerald-700 text-white shadow-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5" />
               <h1 className="text-base font-extrabold leading-none">Cổng Tài Xế</h1>
             </div>
-            <p className="mt-1 text-xs text-emerald-100">
-              {user?.displayName || 'Shipper'} • Lộ trình giao hàng hôm nay
+            <p className="mt-1 truncate text-xs text-emerald-100">
+              {user?.displayName || 'Shipper'} • Lộ trình giao và lấy hàng hôm nay
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <div className="rounded-full bg-emerald-950/40 px-3 py-1.5 text-xs font-bold">
               {activeCount} đơn cần giao
             </div>
@@ -334,7 +435,7 @@ export const ShipperDashboardPage: React.FC = () => {
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-950/70"
             >
               <LogOut className="h-3.5 w-3.5" />
-              Đăng xuất
+              <span className="hidden min-[380px]:inline">Đăng xuất</span>
             </button>
           </div>
         </div>
@@ -394,7 +495,7 @@ export const ShipperDashboardPage: React.FC = () => {
             completedAttempts={efficiencyStats.completedAttempts}
           />
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-3">
             <SummaryCard label="Cần giao" value={activeCount} tone="emerald" />
             <SummaryCard label="Hoàn tất" value={deliveredCount} tone="zinc" />
             <SummaryCard label="Tổng đơn" value={shipments.length} tone="blue" />
@@ -453,11 +554,9 @@ export const ShipperDashboardPage: React.FC = () => {
                   index={index + 1}
                   shipment={shipment}
                   onOpen={() => setSelectedShipment(shipment)}
-                  onStart={() =>
-                    handleUpdateStatus(shipment, 'OUT_FOR_DELIVERY', 'Đang giao hàng')
-                  }
+                  onStart={() => handleUpdateStatus(shipment, 'OUT_FOR_DELIVERY', shipment.type === 'RETURN' ? 'Đang đến lấy hàng trả' : 'Đang giao hàng')}
                   onComplete={() =>
-                    handleUpdateStatus(shipment, 'DELIVERED', 'Giao thành công')
+                    handleUpdateStatus(shipment, 'DELIVERED', shipment.type === 'RETURN' ? 'Đã giao hàng trả về kho' : 'Giao thành công')
                   }
                 />
               ))
@@ -477,10 +576,10 @@ export const ShipperDashboardPage: React.FC = () => {
           <ShipmentDetail
             shipment={selectedShipment}
             onStart={() =>
-              handleUpdateStatus(selectedShipment, 'OUT_FOR_DELIVERY', 'Đang giao hàng')
+              handleUpdateStatus(selectedShipment, 'OUT_FOR_DELIVERY', selectedShipment.type === 'RETURN' ? 'Đang đến lấy hàng trả' : 'Đang giao hàng')
             }
             onComplete={() =>
-              handleUpdateStatus(selectedShipment, 'DELIVERED', 'Giao thành công')
+              handleUpdateStatus(selectedShipment, 'DELIVERED', selectedShipment.type === 'RETURN' ? 'Đã giao hàng trả về kho' : 'Giao thành công')
             }
           />
         )}
@@ -488,12 +587,62 @@ export const ShipperDashboardPage: React.FC = () => {
 
       <Modal
         isOpen={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        title="Tải ảnh QR vận đơn"
-        description="Chọn ảnh QR khách hàng cung cấp để mở nhanh vận đơn."
+        onClose={closeScanner}
+        title="Quét QR vận đơn"
+        description="Dùng camera hoặc chọn ảnh QR để mở nhanh vận đơn."
         maxWidth="md"
       >
         <div className="space-y-4">
+          {cameraActive ? (
+            <div className="space-y-3">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-zinc-950">
+                <video
+                  ref={cameraVideoRef}
+                  className="h-full w-full object-cover"
+                  autoPlay
+                  muted
+                  playsInline
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="h-44 w-44 rounded-2xl border-2 border-emerald-400 shadow-[0_0_0_999px_rgba(0,0,0,0.35)]" />
+                </div>
+                <canvas ref={cameraCanvasRef} className="hidden" />
+              </div>
+              <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
+                Đưa mã QR vào khung để quét tự động.
+              </p>
+              <Button type="button" variant="secondary" className="w-full" onClick={stopCamera}>
+                Dừng camera
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setCameraError('');
+                setCameraActive(true);
+              }}
+              leftIcon={<Camera className="h-4 w-4" />}
+            >
+              Dùng camera để quét QR
+            </Button>
+          )}
+
+          {cameraError && (
+            <div className="flex items-start gap-2 rounded-2xl bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{cameraError}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide text-zinc-400">
+            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+            <span>Hoặc tải ảnh</span>
+            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center transition-colors hover:border-emerald-500 hover:bg-emerald-50/60 dark:border-zinc-700 dark:bg-zinc-800/60 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/20">
             <Upload className="h-8 w-8 text-emerald-500" />
             <span className="mt-3 text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -624,6 +773,7 @@ const ShipmentRow: React.FC<{
   onComplete: () => void;
 }> = ({ index, shipment, onOpen, onStart, onComplete }) => {
   const delivered = shipment.status === 'DELIVERED';
+  const isReturn = shipment.type === 'RETURN';
 
   return (
     <div
@@ -644,6 +794,7 @@ const ShipmentRow: React.FC<{
           <Badge variant={statusVariant(shipment.status)} size="sm">
             {STATUS_LABELS[shipment.status]}
           </Badge>
+          {isReturn && <Badge variant="warning" size="sm">Hàng trả</Badge>}
         </div>
 
         <div className="mt-3 grid gap-3 text-xs text-zinc-500 md:grid-cols-2 dark:text-zinc-400">
@@ -654,7 +805,7 @@ const ShipmentRow: React.FC<{
             <p className="mt-1 line-clamp-2">{shipment.deliveryAddress}</p>
           </div>
           <div className="rounded-2xl bg-zinc-50 p-3 dark:bg-zinc-800/60">
-            <p>Kho xuất: {shipment.warehouseName}</p>
+            <p>{isReturn ? 'Kho nhận hàng trả' : 'Kho xuất'}: {shipment.warehouseName}</p>
             <p className="mt-1 font-bold text-emerald-600 dark:text-emerald-400">
               {formatDistance(shipment.distanceKm)}
             </p>
@@ -675,7 +826,7 @@ const ShipmentRow: React.FC<{
 
         {canStartDelivery(shipment) && (
           <Button type="button" size="sm" onClick={onStart}>
-            Bắt đầu giao
+            {isReturn ? 'Đi lấy hàng' : 'Bắt đầu giao'}
           </Button>
         )}
 
@@ -687,7 +838,7 @@ const ShipmentRow: React.FC<{
             onClick={onComplete}
             leftIcon={<CheckCircle2 className="h-4 w-4" />}
           >
-            Giao xong
+            {isReturn ? 'Đã về kho' : 'Giao xong'}
           </Button>
         )}
       </div>
@@ -700,6 +851,7 @@ const ShipmentDetail: React.FC<{
   onStart: () => void;
   onComplete: () => void;
 }> = ({ shipment, onStart, onComplete }) => {
+  const isReturn = shipment.type === 'RETURN';
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
@@ -713,7 +865,7 @@ const ShipmentDetail: React.FC<{
 
       <div className="grid gap-3 text-sm md:grid-cols-2">
         <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/60">
-          <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Người nhận</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{isReturn ? 'Người gửi trả' : 'Người nhận'}</p>
           <p className="mt-2 font-black">{shipment.recipientName}</p>
           <a
             href={`tel:${shipment.recipientPhone}`}
@@ -725,7 +877,7 @@ const ShipmentDetail: React.FC<{
         </div>
 
         <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/60">
-          <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Kho xuất</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{isReturn ? 'Kho nhận hàng trả' : 'Kho xuất'}</p>
           <p className="mt-2 font-black">{shipment.warehouseName}</p>
           <p className="mt-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
             {formatDistance(shipment.distanceKm)}
@@ -752,7 +904,7 @@ const ShipmentDetail: React.FC<{
         </a>
 
         <Button type="button" disabled={!canStartDelivery(shipment)} onClick={onStart}>
-          Bắt đầu giao
+          {isReturn ? 'Đi lấy hàng' : 'Bắt đầu giao'}
         </Button>
 
         <Button
@@ -762,7 +914,7 @@ const ShipmentDetail: React.FC<{
           onClick={onComplete}
           leftIcon={<CheckCircle2 className="h-4 w-4" />}
         >
-          Giao thành công
+          {isReturn ? 'Đã về kho' : 'Giao thành công'}
         </Button>
       </div>
     </div>

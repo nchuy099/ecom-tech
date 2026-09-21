@@ -21,6 +21,16 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
     );
   }
 
+  if (status === 'RETURN_REQUESTED' || status === 'PARTIALLY_RETURNED' || status === 'RETURNED') {
+    const labels = {
+      RETURN_REQUESTED: ['Yêu cầu trả hàng đang được xử lý', 'Theo dõi lộ trình lấy hàng trong mục yêu cầu trả hàng.'],
+      PARTIALLY_RETURNED: ['Đã trả một phần đơn hàng', 'Một phần sản phẩm đã được kiểm nhận và hoàn tiền.'],
+      RETURNED: ['Đơn hàng đã được trả', 'Toàn bộ sản phẩm đã được kiểm nhận và hoàn tiền.'],
+    } as const;
+    const [title, description] = labels[status];
+    return <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"><PackageCheck className="h-5 w-5 shrink-0" /><div><p className="text-xs font-bold">{title}</p><p className="text-[11px] text-amber-600/80 dark:text-amber-300/80">{description}</p></div></div>;
+  }
+
   const steps = [
     { key: 'PENDING_PAYMENT', label: 'Chờ thanh toán', icon: <Clock className="w-4 h-4" /> },
     { key: 'CONFIRMED', label: 'Đã xác nhận & giữ hàng', icon: <PackageCheck className="w-4 h-4" /> },
@@ -34,6 +44,9 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
     PARTIALLY_SHIPPED: 2,
     SHIPPED: 2,
     COMPLETED: 3,
+    RETURN_REQUESTED: 3,
+    PARTIALLY_RETURNED: 3,
+    RETURNED: 3,
     CANCELLED: -1,
   };
 
@@ -41,11 +54,11 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
 
   return (
     <div className="w-full py-2">
-      <div className="flex items-center justify-between relative">
+      <div className="relative flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Connecting line */}
-        <div className="absolute top-1/2 left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 -translate-y-1/2 z-0" />
+        <div className="absolute top-1/2 left-0 right-0 z-0 hidden h-1 -translate-y-1/2 bg-zinc-200 dark:bg-zinc-800 sm:block" />
         <div
-          className="absolute top-1/2 left-0 h-1 bg-brand-500 -translate-y-1/2 z-0 transition-all duration-500"
+          className="absolute top-1/2 left-0 z-0 hidden h-1 -translate-y-1/2 bg-brand-500 transition-all duration-500 sm:block"
           style={{ width: `${(currentIndex / (steps.length - 1)) * 100}%` }}
         />
 
@@ -54,7 +67,7 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
           const isCurrent = idx === currentIndex;
 
           return (
-            <div key={step.key} className="relative z-10 flex flex-col items-center group">
+            <div key={step.key} className="relative z-10 flex items-center gap-3 sm:flex-col sm:gap-0 group">
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
                   isDone
@@ -67,7 +80,7 @@ export const OrderStatusStepper: React.FC<OrderStatusStepperProps> = ({ status }
                 {isDone ? <Check className="w-4 h-4" /> : step.icon}
               </div>
               <span
-                className={`text-[11px] font-semibold mt-2 text-center whitespace-nowrap ${
+                className={`text-[11px] font-semibold text-start sm:mt-2 sm:text-center ${
                   isDone || isCurrent
                     ? 'text-zinc-900 dark:text-zinc-100'
                     : 'text-zinc-400 dark:text-zinc-600'

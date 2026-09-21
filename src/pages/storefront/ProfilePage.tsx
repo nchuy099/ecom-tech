@@ -87,8 +87,8 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* User profile card */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col items-start gap-4 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-black text-xl">
             {user?.displayName.charAt(0) || 'U'}
           </div>
@@ -108,7 +108,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* Addresses management */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
               Sổ Địa Chỉ Giao Hàng
@@ -193,7 +193,7 @@ export const ProfilePage: React.FC = () => {
             placeholder="Số nhà, ngõ, tên đường..."
             required
           />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase">
                 Tỉnh / Thành

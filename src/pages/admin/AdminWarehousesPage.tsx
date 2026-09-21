@@ -107,7 +107,7 @@ export const AdminWarehousesPage: React.FC = () => {
 
       {/* Inventory Table */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-brand-600" />
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -118,7 +118,7 @@ export const AdminWarehousesPage: React.FC = () => {
         </div>
 
         <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden shadow-sm">
-          <table className="w-full text-left text-xs">
+          <table className="responsive-table w-full text-left text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-400 uppercase font-mono tracking-wider text-[10px] border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="py-3 px-4">Sản Phẩm</th>
@@ -132,24 +132,24 @@ export const AdminWarehousesPage: React.FC = () => {
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {inventory.map(item => (
                 <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="py-3 px-4 font-bold text-zinc-900 dark:text-zinc-100">
+                  <td data-label="Sản phẩm" className="py-3 px-4 font-bold text-zinc-900 dark:text-zinc-100">
                     {item.productName}
                   </td>
-                  <td className="py-3 px-4 font-mono text-zinc-600 dark:text-zinc-400 font-semibold">
+                  <td data-label="Mã SKU" className="py-3 px-4 font-mono text-zinc-600 dark:text-zinc-400 font-semibold">
                     {item.sku}
                   </td>
-                  <td className="py-3 px-4 text-zinc-500">{item.warehouseName}</td>
-                  <td className="py-3 px-4">
+                  <td data-label="Vị trí kho" className="py-3 px-4 text-zinc-500">{item.warehouseName}</td>
+                  <td data-label="Tồn khả dụng" className="py-3 px-4">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       {item.availableQuantity} sp
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td data-label="Tồn đang giữ" className="py-3 px-4">
                     <span className="font-bold text-amber-600 dark:text-amber-400">
                       {item.reservedQuantity} sp
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td data-label="Điều chỉnh" className="py-3 px-4 text-right">
                     <Button
                       variant="outline"
                       size="sm"
@@ -203,11 +203,11 @@ export const AdminWarehousesPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsAdjustModalOpen(false)}>
+            <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+              <Button className="w-full sm:w-auto" variant="outline" size="sm" type="button" onClick={() => setIsAdjustModalOpen(false)}>
                 Hủy
               </Button>
-              <Button size="sm" type="submit">
+              <Button className="w-full sm:w-auto" size="sm" type="submit">
                 Xác Nhận Điều Chỉnh
               </Button>
             </div>

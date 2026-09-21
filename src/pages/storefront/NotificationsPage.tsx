@@ -26,7 +26,7 @@ export const NotificationsPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
             Thông Báo Hệ Thống
@@ -59,7 +59,7 @@ export const NotificationsPage: React.FC = () => {
             <div
               key={notif.id}
               onClick={() => handleMarkSingleRead(notif.id)}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${
+              className={`flex items-start gap-3 rounded-2xl border p-4 transition-all cursor-pointer sm:gap-3.5 ${
                 notif.read
                   ? 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800/80'
                   : 'bg-brand-50/20 dark:bg-brand-950/20 border-brand-500/40'
@@ -76,7 +76,7 @@ export const NotificationsPage: React.FC = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col gap-1 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-2">
                   <h4
                     className={`text-xs font-bold ${
                       notif.read ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-900 dark:text-white'
@@ -84,7 +84,7 @@ export const NotificationsPage: React.FC = () => {
                   >
                     {notif.title}
                   </h4>
-                  <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1 shrink-0">
+                  <span className="flex shrink-0 items-center gap-1 text-[10px] font-mono text-zinc-400">
                     <Clock className="w-3 h-3" />
                     <span>{formatDate(notif.createdAt)}</span>
                   </span>

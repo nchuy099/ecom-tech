@@ -195,17 +195,30 @@ export const CheckoutPage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Stepper Header */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800 pb-6">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          {steps.map(s => {
+      <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800 sm:pb-6">
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-4 flex items-baseline justify-between gap-3 sm:hidden">
+            <span className="shrink-0 text-xs font-bold text-brand-600 dark:text-brand-400">
+              Bước {currentStep}/{steps.length}
+            </span>
+            <span className="min-w-0 text-right text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              {steps[currentStep - 1].title}
+            </span>
+          </div>
+          <ol className="flex items-center" aria-label="Tiến trình thanh toán">
+          {steps.map((s, index) => {
             const isCompleted = currentStep > s.num;
             const isCurrent = currentStep === s.num;
             return (
-              <div key={s.num} className="flex flex-col items-center gap-1.5">
+              <React.Fragment key={s.num}>
+              <li
+                className="relative z-10 flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:gap-2"
+                aria-current={isCurrent ? 'step' : undefined}
+              >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all sm:h-8 sm:w-8 ${
                     isCompleted
                       ? 'bg-brand-600 text-white'
                       : isCurrent
@@ -216,7 +229,7 @@ export const CheckoutPage: React.FC = () => {
                   {isCompleted ? <Check className="w-4 h-4" /> : s.num}
                 </div>
                 <span
-                  className={`text-[11px] font-semibold text-center hidden sm:block ${
+                  className={`sr-only text-center text-[11px] font-semibold sm:not-sr-only ${
                     isCurrent || isCompleted
                       ? 'text-zinc-900 dark:text-zinc-100'
                       : 'text-zinc-400'
@@ -224,9 +237,17 @@ export const CheckoutPage: React.FC = () => {
                 >
                   {s.title}
                 </span>
-              </div>
+              </li>
+              {index < steps.length - 1 && (
+                <div
+                  className={`h-0.5 flex-1 ${currentStep > s.num ? 'bg-brand-600' : 'bg-zinc-200 dark:bg-zinc-800'}`}
+                  aria-hidden="true"
+                />
+              )}
+              </React.Fragment>
             );
           })}
+          </ol>
         </div>
       </div>
 
@@ -235,9 +256,9 @@ export const CheckoutPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Step 1: Address */}
           {currentStep === 1 && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
+            <div className="space-y-6 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     Bước 1: Chọn Địa Chỉ Nhận Hàng
                   </h3>
@@ -245,7 +266,7 @@ export const CheckoutPage: React.FC = () => {
                     Hệ thống sẽ kiểm tra tồn kho tại khu vực giao của địa chỉ đã chọn.
                   </p>
                 </div>
-                <MapPin className="w-5 h-5 text-brand-600" />
+                <MapPin className="h-5 w-5 shrink-0 text-brand-600" />
               </div>
 
               <div className="space-y-3">
@@ -261,9 +282,9 @@ export const CheckoutPage: React.FC = () => {
                           : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                               {addr.recipientName}
                             </span>
@@ -330,13 +351,15 @@ export const CheckoutPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex border-t border-zinc-100 pt-4 dark:border-zinc-800">
                 <Button
+                  className="min-h-11 w-full sm:ml-auto sm:w-auto"
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => setCurrentStep(2)}
                   disabled={!canContinueToPayment}
                 >
-                  Tiếp tục: Kế hoạch xuất kho
+                  <span className="sm:hidden">Tiếp tục</span>
+                  <span className="hidden sm:inline">Tiếp tục: Kế hoạch xuất kho</span>
                 </Button>
               </div>
             </div>
@@ -344,9 +367,9 @@ export const CheckoutPage: React.FC = () => {
 
           {/* Step 2: Warehouse plan */}
           {currentStep === 2 && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
+            <div className="space-y-6 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     Bước 2: Kế Hoạch Xuất Kho
                   </h3>
@@ -354,7 +377,7 @@ export const CheckoutPage: React.FC = () => {
                     Đơn chỉ được xuất từ kho phục vụ cùng khu vực với địa chỉ nhận hàng.
                   </p>
                 </div>
-                <Building className="w-5 h-5 text-brand-600" />
+                <Building className="h-5 w-5 shrink-0 text-brand-600" />
               </div>
 
               <div className="space-y-4">
@@ -384,13 +407,13 @@ export const CheckoutPage: React.FC = () => {
                 {shipmentPlan.map((plan, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between"
+                    className="flex flex-col gap-3 rounded-2xl border border-zinc-200/80 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                         <Truck className="w-5 h-5" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                           {plan.warehouseName}
                         </h4>
@@ -403,8 +426,8 @@ export const CheckoutPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+                    <div className="text-left sm:text-right">
+                      <span className="inline-flex text-xs font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
                         Xuất {plan.quantity} sản phẩm
                       </span>
                     </div>
@@ -412,20 +435,23 @@ export const CheckoutPage: React.FC = () => {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
                   leftIcon={<ArrowLeft className="w-4 h-4" />}
                   onClick={() => setCurrentStep(1)}
                 >
                   Quay lại
                 </Button>
                 <Button
+                  className="min-h-11 w-full sm:w-auto"
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => setCurrentStep(3)}
                   disabled={!canContinueToPayment}
                 >
-                  Tiếp tục: Thanh toán
+                  <span className="sm:hidden">Tiếp tục</span>
+                  <span className="hidden sm:inline">Tiếp tục: Thanh toán</span>
                 </Button>
               </div>
             </div>
@@ -433,9 +459,9 @@ export const CheckoutPage: React.FC = () => {
 
           {/* Step 3: Payment Method */}
           {currentStep === 3 && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
+            <div className="space-y-6 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     Bước 3: Chọn Phương Thức Thanh Toán
                   </h3>
@@ -443,23 +469,23 @@ export const CheckoutPage: React.FC = () => {
                     Hỗ trợ quét mã QR tiện lợi, thẻ ngân hàng hoặc thanh toán khi nhận hàng.
                   </p>
                 </div>
-                <CreditCard className="w-5 h-5 text-brand-600" />
+                <CreditCard className="h-5 w-5 shrink-0 text-brand-600" />
               </div>
 
               <div className="space-y-3">
                 <div
                   onClick={() => setPaymentMethod('QR')}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 p-4 transition-all ${
                     paymentMethod === 'QR'
                       ? 'border-brand-500 bg-brand-50/20 dark:bg-brand-950/20'
                       : 'border-zinc-200 dark:border-zinc-800'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600">
                       <QrCode className="w-5 h-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                         Chuyển Khoản Mã QR (VietQR / Napas247)
                       </p>
@@ -468,67 +494,70 @@ export const CheckoutPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  {paymentMethod === 'QR' && <CheckCircle2 className="w-5 h-5 text-brand-500" />}
+                  {paymentMethod === 'QR' && <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-500" />}
                 </div>
 
                 <div
                   onClick={() => setPaymentMethod('CARD')}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 p-4 transition-all ${
                     paymentMethod === 'CARD'
                       ? 'border-brand-500 bg-brand-50/20 dark:bg-brand-950/20'
                       : 'border-zinc-200 dark:border-zinc-800'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600">
                       <CreditCard className="w-5 h-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                         Thẻ Quốc Tế (Visa / MasterCard / JCB)
                       </p>
                       <p className="text-[11px] text-zinc-500">Xác thực 3D Secure an toàn</p>
                     </div>
                   </div>
-                  {paymentMethod === 'CARD' && <CheckCircle2 className="w-5 h-5 text-brand-500" />}
+                  {paymentMethod === 'CARD' && <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-500" />}
                 </div>
 
                 <div
                   onClick={() => setPaymentMethod('COD')}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 p-4 transition-all ${
                     paymentMethod === 'COD'
                       ? 'border-brand-500 bg-brand-50/20 dark:bg-brand-950/20'
                       : 'border-zinc-200 dark:border-zinc-800'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600">
                       <Banknote className="w-5 h-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                         Thanh Toán Khi Nhận Hàng (COD)
                       </p>
                       <p className="text-[11px] text-zinc-500">Kiểm tra hàng trước khi gửi tiền mặt</p>
                     </div>
                   </div>
-                  {paymentMethod === 'COD' && <CheckCircle2 className="w-5 h-5 text-brand-500" />}
+                  {paymentMethod === 'COD' && <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-500" />}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
                   leftIcon={<ArrowLeft className="w-4 h-4" />}
                   onClick={() => setCurrentStep(2)}
                 >
                   Quay lại
                 </Button>
                 <Button
+                  className="min-h-11 w-full sm:w-auto"
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => setCurrentStep(4)}
                 >
-                  Tiếp tục: Xem lại đơn
+                  <span className="sm:hidden">Tiếp tục</span>
+                  <span className="hidden sm:inline">Tiếp tục: Xem lại đơn</span>
                 </Button>
               </div>
             </div>
@@ -536,7 +565,7 @@ export const CheckoutPage: React.FC = () => {
 
           {/* Step 4: Final Confirmation */}
           {currentStep === 4 && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm space-y-6">
+            <div className="space-y-6 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900 sm:p-6">
               <div>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                   Bước 4: Xác Nhận & Đặt Hàng
@@ -569,9 +598,10 @@ export const CheckoutPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
                   disabled={isSubmitting}
                   leftIcon={<ArrowLeft className="w-4 h-4" />}
                   onClick={() => setCurrentStep(3)}
@@ -583,7 +613,7 @@ export const CheckoutPage: React.FC = () => {
                   isLoading={isSubmitting}
                   onClick={handlePlaceOrder}
                   disabled={!canContinueToPayment}
-                  className="font-bold px-8"
+                  className="min-h-11 w-full font-bold sm:w-auto sm:px-8"
                 >
                   Xác Nhận Đặt Hàng
                 </Button>

@@ -10,6 +10,7 @@ import {
   OrderResponse,
   ProductSummaryResponse,
   ProductVariantDetailResponse,
+  ReturnResponse,
   ShipmentResponse,
   ShipmentStatus,
   ShippingZoneResponse,
@@ -61,10 +62,28 @@ export const ecommerceService = {
       data
     ),
 
-  createVariant: (productId: string, data: { sku: string; name: string; price: number }) =>
-    api.post<{ id: string; productId: string; sku: string; name: string; price: number; active: boolean }>(
+  createVariant: (
+    productId: string,
+    data: { sku: string; name: string; price: number; imageUrl?: string }
+  ) =>
+    api.post<{ id: string; productId: string; sku: string; name: string; price: number; imageUrl?: string; active: boolean }>(
       `/admin/products/${productId}/variants`,
       data
+    ),
+
+  uploadProductImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.upload<{ imageUrl: string; objectKey: string; contentType: string; size: number }>(
+      '/admin/media/images',
+      formData
+    );
+  },
+
+  importProductImage: (url: string) =>
+    api.post<{ imageUrl: string; objectKey: string; contentType: string; size: number }>(
+      '/admin/media/images/import',
+      { url }
     ),
 
   deleteProduct: (productId: string) => api.delete<void>(`/admin/products/${productId}`),
@@ -133,11 +152,22 @@ export const ecommerceService = {
 
   cancelOrder: (orderId: string) => api.post<OrderResponse>(`/orders/${orderId}/cancel`),
 
-  createReturn: (orderId: string, reason: string) =>
-    api.post('/returns', {
+  getReturns: () => api.get<ReturnResponse[]>('/returns'),
+
+  createReturn: (orderId: string, reason: string, items: Array<{ orderItemId: string; quantity: number }>) =>
+    api.post<ReturnResponse>('/returns', {
       orderId,
       reason,
+      items,
     }),
+
+  getAdminReturns: () => api.get<ReturnResponse[]>('/admin/returns'),
+  approveReturn: (returnId: string, note?: string) => api.post<ReturnResponse>(`/admin/returns/${returnId}/approve`, { note }),
+  rejectReturn: (returnId: string, note: string) => api.post<ReturnResponse>(`/admin/returns/${returnId}/reject`, { note }),
+  assignReturnShipment: (shipmentId: string, shipperId: string) => api.post<ShipmentResponse>(`/admin/returns/shipments/${shipmentId}/assign`, { shipperId }),
+  receiveReturnShipment: (shipmentId: string, items: Array<{ shipmentItemId: string; receivedQuantity: number; restockedQuantity: number }>) =>
+    api.post<ReturnResponse>(`/admin/returns/shipments/${shipmentId}/receive`, { items }),
+  refundReturn: (returnId: string) => api.post<ReturnResponse>(`/admin/returns/${returnId}/refund`),
 
   getShipmentByOrder: async (orderId: string) => {
     const shipments = await api.get<ShipmentResponse[]>(`/orders/${orderId}/shipments`);

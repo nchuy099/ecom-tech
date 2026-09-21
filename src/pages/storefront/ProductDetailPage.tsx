@@ -65,7 +65,6 @@ export const ProductDetailPage: React.FC = () => {
     imageUrl: selectedVariant.imageUrl,
     rating: 4.9,
     reviewCount: 120,
-    badge: undefined,
   };
 
   const handleAddToCart = () => {
@@ -106,13 +105,6 @@ export const ProductDetailPage: React.FC = () => {
               alt={product.name}
               className="w-full h-full object-cover object-center transition-all duration-300"
             />
-            {product.badge && (
-              <div className="absolute top-4 left-4">
-                <Badge variant="accent" size="md">
-                  {product.badge}
-                </Badge>
-              </div>
-            )}
           </div>
 
           {/* Thumbnails of variants */}
@@ -239,7 +231,7 @@ export const ProductDetailPage: React.FC = () => {
             <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
               Số lượng mua:
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-start gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:gap-3">
               <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-900 p-1">
                 <button
                   disabled={quantity <= 1 || isOutOfStock}
@@ -288,7 +280,7 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           {/* Value props mini */}
-          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-3 gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
             <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
               <Truck className="w-4 h-4 text-brand-600 mx-auto mb-1" />
               <p className="text-[11px] font-bold">Giao từ kho gần nhất</p>
@@ -307,7 +299,7 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Tabs: Description / Specs */}
       <div className="border-t border-zinc-200 dark:border-zinc-800 pt-10 space-y-6">
-        <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-6">
+        <div className="flex gap-6 overflow-x-auto border-b border-zinc-200 dark:border-zinc-800">
           <button
             onClick={() => setActiveTab('desc')}
             className={`pb-3 text-sm font-bold border-b-2 transition-colors ${
@@ -345,17 +337,17 @@ export const ProductDetailPage: React.FC = () => {
         {activeTab === 'specs' && (
           <div className="max-w-2xl">
             <dl className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
-              <div className="py-3 grid grid-cols-3">
+              <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-0">
                 <dt className="font-semibold text-zinc-400">Mã SKU</dt>
                 <dd className="col-span-2 font-mono text-zinc-800 dark:text-zinc-200">{selectedVariant.sku}</dd>
               </div>
-              <div className="py-3 grid grid-cols-3">
+              <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-0">
                 <dt className="font-semibold text-zinc-400">Phiên bản</dt>
                 <dd className="col-span-2 text-zinc-800 dark:text-zinc-200">{selectedVariant.variantName}</dd>
               </div>
               {selectedVariant.attributes &&
                 Object.entries(selectedVariant.attributes).map(([k, v]) => (
-                  <div key={k} className="py-3 grid grid-cols-3">
+                  <div key={k} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-3 sm:gap-0">
                     <dt className="font-semibold text-zinc-400">{k}</dt>
                     <dd className="col-span-2 text-zinc-800 dark:text-zinc-200">{v}</dd>
                   </div>
@@ -384,7 +376,7 @@ export const ProductDetailPage: React.FC = () => {
             {inventory.map((item, idx) => (
               <div
                 key={item.id}
-                className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between"
+                className="flex flex-col items-start gap-3 rounded-xl border border-zinc-200 p-3.5 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">

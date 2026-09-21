@@ -8,7 +8,6 @@ import { Role } from './types';
 
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
-import { CartDrawer } from './components/storefront/CartDrawer';
 import { AdminLayout } from './components/layout/AdminLayout';
 
 // Storefront pages
@@ -21,12 +20,14 @@ import { OrderHistoryPage } from './pages/storefront/OrderHistoryPage';
 import { OrderDetailPage } from './pages/storefront/OrderDetailPage';
 import { ProfilePage } from './pages/storefront/ProfilePage';
 import { NotificationsPage } from './pages/storefront/NotificationsPage';
+import { ReturnsPage } from './pages/storefront/ReturnsPage';
 
 // Admin pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
 import { AdminWarehousesPage } from './pages/admin/AdminWarehousesPage';
 import { AdminShipmentsPage } from './pages/admin/AdminShipmentsPage';
+import { AdminReturnsPage } from './pages/admin/AdminReturnsPage';
 
 // Shipper pages
 import { ShipperDashboardPage } from './pages/shipper/ShipperDashboardPage';
@@ -44,7 +45,6 @@ const StorefrontLayout: React.FC = () => {
         <Outlet />
       </div>
       <Footer />
-      <CartDrawer />
     </div>
   );
 };
@@ -122,6 +122,7 @@ export function App() {
                     <Route path="/checkout" element={<CheckoutPage />} />
                     <Route path="/orders" element={<OrderHistoryPage />} />
                     <Route path="/orders/:id" element={<OrderDetailPage />} />
+                    <Route path="/returns" element={<ReturnsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                   </Route>
@@ -164,6 +165,16 @@ export function App() {
                     <RequireRoles allowedRoles={['ADMIN', 'WAREHOUSE_STAFF']}>
                       <AdminLayout>
                         <AdminShipmentsPage />
+                      </AdminLayout>
+                    </RequireRoles>
+                  }
+                />
+                <Route
+                  path="/admin/returns"
+                  element={
+                    <RequireRoles allowedRoles={['ADMIN', 'WAREHOUSE_STAFF']}>
+                      <AdminLayout>
+                        <AdminReturnsPage />
                       </AdminLayout>
                     </RequireRoles>
                   }
