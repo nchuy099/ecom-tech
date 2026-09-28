@@ -17,6 +17,7 @@ import { OrderStatusStepper } from '../../components/storefront/OrderStatusStepp
 import { TrackingTimeline } from '../../components/storefront/TrackingTimeline';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { PageLoading } from '../../components/ui/PageLoading';
 import { useToast } from '../../context/ToastContext';
 import { downloadDataUrl, generateQrDataUrl, shipmentQrPayload } from '../../utils/qr';
 
@@ -31,18 +32,31 @@ export const OrderDetailPage: React.FC = () => {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnReason, setReturnReason] = useState('');
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      ecommerceService.getOrderDetail(id).then(ord => {
-        if (ord) {
-          setOrder(ord);
-          ecommerceService.getShipmentByOrder(ord.id).then(shp => {
-            if (shp) setShipment(shp);
-          });
-        }
-      });
+    if (!id) {
+      setIsLoading(false);
+      return;
     }
+    let cancelled = false;
+    setIsLoading(true);
+    setOrder(null);
+    setShipment(null);
+    ecommerceService
+      .getOrderDetail(id)
+      .then(async ord => {
+        if (!ord || cancelled) return;
+        setOrder(ord);
+        const shp = await ecommerceService.getShipmentByOrder(ord.id).catch(() => undefined);
+        if (!cancelled && shp) setShipment(shp);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -63,6 +77,17 @@ export const OrderDetailPage: React.FC = () => {
       cancelled = true;
     };
   }, [shipment?.trackingNumber]);
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <Link to="/orders" className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Quay lại danh sách đơn hàng
+        </Link>
+        <PageLoading variant="detail" className="px-0 py-0" label="Đang tải chi tiết đơn hàng" />
+      </div>
+    );
+  }
 
   if (!order) {
     return (

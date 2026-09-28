@@ -18,11 +18,13 @@ import { ecommerceService } from '../../services/ecommerceService';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { Button } from '../../components/ui/Button';
 import { CategoryResponse, ProductSummaryResponse } from '../../types';
+import { LoadingCardGrid } from '../../components/ui/PageLoading';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Countdown timer for Flash Sale
   const [timeLeft, setTimeLeft] = useState({ hours: 14, minutes: 32, seconds: 45 });
@@ -40,8 +42,20 @@ export const HomePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    ecommerceService.getCategories().then(setCategories);
-    ecommerceService.getProducts({ size: 12 }).then(page => setProducts(page.items));
+    let cancelled = false;
+    setIsLoading(true);
+    Promise.all([ecommerceService.getCategories(), ecommerceService.getProducts({ size: 12 })])
+      .then(([categoryData, productPage]) => {
+        if (cancelled) return;
+        setCategories(categoryData);
+        setProducts(productPage.items);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getCategoryIcon = (iconName?: string) => {
@@ -142,6 +156,7 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
+        {isLoading ? <LoadingCardGrid count={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" label="Đang tải danh mục" /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {categories.map(cat => (
             <div
@@ -158,7 +173,7 @@ export const HomePage: React.FC = () => {
               <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">{cat.description}</p>
             </div>
           ))}
-        </div>
+        </div>)}
       </section>
 
       {/* Flash Sale Banner & Cards */}
@@ -199,11 +214,12 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
+          {isLoading ? <LoadingCardGrid count={4} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" label="Đang tải sản phẩm flash sale" /> : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {flashSaleProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
-          </div>
+          </div>)}
         </div>
       </section>
 
@@ -226,11 +242,12 @@ export const HomePage: React.FC = () => {
           </Button>
         </div>
 
+        {isLoading ? <LoadingCardGrid count={6} label="Đang tải sản phẩm đề xuất" /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredProducts.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
-        </div>
+        </div>)}
       </section>
 
       {/* Fulfillment Spotlight */}

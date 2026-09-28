@@ -4,12 +4,25 @@ import { ecommerceService } from '../../services/ecommerceService';
 import { NotificationResponse } from '../../types';
 import { formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
+import { LoadingList } from '../../components/ui/PageLoading';
 
 export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ecommerceService.getNotifications().then(setNotifications);
+    let cancelled = false;
+    ecommerceService
+      .getNotifications()
+      .then(data => {
+        if (!cancelled) setNotifications(data);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleMarkAllRead = async () => {
@@ -49,7 +62,7 @@ export const NotificationsPage: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {notifications.length === 0 ? (
+        {isLoading ? <LoadingList label="Đang tải thông báo" /> : notifications.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
             <Bell className="w-8 h-8 text-zinc-400 mx-auto" />
             <p className="text-xs text-zinc-500">Bạn không có thông báo nào mới.</p>

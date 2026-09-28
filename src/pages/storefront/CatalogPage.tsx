@@ -15,6 +15,7 @@ import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { CategoryResponse, ProductSummaryResponse } from '../../types';
 import { SearchSuggestions } from '../../components/storefront/SearchSuggestions';
+import { LoadingCardGrid } from '../../components/ui/PageLoading';
 
 export const CatalogPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export const CatalogPage: React.FC = () => {
   const [products, setProducts] = useState<ProductSummaryResponse[]>([]);
   const [isKeywordFocused, setIsKeywordFocused] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const activeFilterCount = Number(Boolean(keyword.trim())) + Number(selectedCategory !== 'all') + Number(inStockOnly) + Number(maxPrice < 60000000);
 
   // Sync state if url changes
@@ -46,6 +48,8 @@ export const CatalogPage: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
+    let cancelled = false;
+    setIsLoadingProducts(true);
     ecommerceService
       .getProducts({
         keyword,
@@ -55,7 +59,18 @@ export const CatalogPage: React.FC = () => {
         sort: sortBy,
         size: 60,
       })
-      .then(page => setProducts(page.items));
+      .then(page => {
+        if (!cancelled) setProducts(page.items);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingProducts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [keyword, selectedCategory, maxPrice, inStockOnly, sortBy]);
 
   const filteredProducts = useMemo(() => {
@@ -312,7 +327,13 @@ export const CatalogPage: React.FC = () => {
           </div>
 
           {/* Product Grid */}
-          {filteredProducts.length === 0 ? (
+          {isLoadingProducts ? (
+            <LoadingCardGrid
+              count={isGridView ? 6 : 4}
+              className={isGridView ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}
+              label="Đang tải sản phẩm"
+            />
+          ) : filteredProducts.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
               <p className="text-base font-bold text-zinc-800 dark:text-zinc-200">
                 Không tìm thấy sản phẩm nào

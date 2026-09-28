@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import { LoadingCardGrid } from '../../components/ui/PageLoading';
 
 export const ProfilePage: React.FC = () => {
   const { user, role } = useAuth();
@@ -22,6 +23,7 @@ export const ProfilePage: React.FC = () => {
 
   const [addresses, setAddresses] = useState<AddressResponse[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // New address form state
   const [recipientName, setRecipientName] = useState(user?.displayName || '');
@@ -33,7 +35,18 @@ export const ProfilePage: React.FC = () => {
   const [defaultAddress, setDefaultAddress] = useState(false);
 
   useEffect(() => {
-    ecommerceService.getAddresses().then(setAddresses);
+    let cancelled = false;
+    ecommerceService
+      .getAddresses()
+      .then(data => {
+        if (!cancelled) setAddresses(data);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSetDefault = async (id: string) => {
@@ -124,6 +137,7 @@ export const ProfilePage: React.FC = () => {
           </Button>
         </div>
 
+        {isLoading ? <LoadingCardGrid count={2} className="grid-cols-1 sm:grid-cols-2" label="Đang tải địa chỉ" /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {addresses.map(addr => (
             <div
@@ -163,7 +177,7 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+        </div>)}
       </div>
 
       {/* Add Address Modal */}

@@ -5,6 +5,7 @@ import { ecommerceService } from '../../services/ecommerceService';
 import { ReturnResponse } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { formatCurrency, formatDate } from '../../utils/format';
+import { LoadingList } from '../../components/ui/PageLoading';
 
 const statusLabel: Record<ReturnResponse['status'], string> = {
   REQUESTED: 'Đang chờ duyệt',
@@ -17,9 +18,21 @@ const statusLabel: Record<ReturnResponse['status'], string> = {
 
 export const ReturnsPage: React.FC = () => {
   const [returns, setReturns] = useState<ReturnResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ecommerceService.getReturns().then(setReturns);
+    let cancelled = false;
+    ecommerceService
+      .getReturns()
+      .then(data => {
+        if (!cancelled) setReturns(data);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -37,7 +50,7 @@ export const ReturnsPage: React.FC = () => {
         </Link>
       </div>
 
-      {returns.length === 0 ? (
+      {isLoading ? <LoadingList label="Đang tải yêu cầu trả hàng" /> : returns.length === 0 ? (
         <div className="border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
           <PackageCheck className="mx-auto h-8 w-8 text-zinc-400" />
           <p className="mt-3 text-sm font-bold">Chưa có yêu cầu trả hàng</p>

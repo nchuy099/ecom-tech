@@ -5,13 +5,27 @@ import { ecommerceService } from '../../services/ecommerceService';
 import { OrderResponse, OrderStatus } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { Badge } from '../../components/ui/Badge';
+import { LoadingList } from '../../components/ui/PageLoading';
 
 export const OrderHistoryPage: React.FC = () => {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    ecommerceService.getOrders().then(setOrders);
+    let cancelled = false;
+    setIsLoading(true);
+    ecommerceService
+      .getOrders()
+      .then(data => {
+        if (!cancelled) setOrders(data);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -104,7 +118,7 @@ export const OrderHistoryPage: React.FC = () => {
 
       {/* Orders List */}
       <div className="space-y-4">
-        {filteredOrders.length === 0 ? (
+        {isLoading ? <LoadingList label="Đang tải lịch sử đơn hàng" /> : filteredOrders.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
             <Package className="w-10 h-10 text-zinc-400 mx-auto" />
             <p className="text-sm font-bold">Không có đơn hàng nào</p>
