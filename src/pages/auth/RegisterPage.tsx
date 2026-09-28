@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Layers, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToast } from '../../context/ToastContext';
 
+type RedirectState = {
+  from?: { pathname?: string; search?: string; hash?: string };
+};
+
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const from = (location.state as RedirectState | null)?.from;
+  const redirectPath = from?.pathname
+    ? `${from.pathname}${from.search ?? ''}${from.hash ?? ''}`
+    : '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +31,7 @@ export const RegisterPage: React.FC = () => {
     try {
       await register(displayName, email, password);
       addToast('success', 'Đăng ký tài khoản thành công!', `Chào mừng ${displayName || email}`);
-      navigate('/');
+      navigate(redirectPath, { replace: true });
     } catch (err: any) {
       addToast('error', 'Đăng ký thất bại', err.message);
     } finally {
@@ -91,7 +100,7 @@ export const RegisterPage: React.FC = () => {
 
         <p className="text-center text-xs text-zinc-500">
           Đã có tài khoản?{' '}
-          <Link to="/login" className="font-bold text-brand-600 dark:text-brand-400 hover:underline">
+          <Link to="/login" state={location.state} className="font-bold text-brand-600 dark:text-brand-400 hover:underline">
             Đăng nhập ngay
           </Link>
         </p>

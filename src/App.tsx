@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -67,9 +67,10 @@ const StorefrontAccess: React.FC = () => {
 
 const CustomerOnly: React.FC = () => {
   const { role, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (role !== 'CUSTOMER') {
@@ -84,9 +85,10 @@ const RequireRoles: React.FC<{ allowedRoles: Role[]; children: React.ReactNode }
   children,
 }) => {
   const { role, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (!allowedRoles.includes(role as Role)) {

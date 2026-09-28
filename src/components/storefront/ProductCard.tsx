@@ -1,10 +1,11 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Star, ShoppingCart, Check, Warehouse } from 'lucide-react';
 import { ProductSummaryResponse } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { Badge } from '../ui/Badge';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface ProductCardProps {
   product: ProductSummaryResponse;
@@ -12,14 +13,24 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart } = useCart();
+  const { isAuthenticated, role } = useAuth();
 
   const isLowStock = product.availableQuantity > 0 && product.availableQuantity <= 5;
   const isOutOfStock = product.availableQuantity <= 0;
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart(
+
+    if (!isAuthenticated || role !== 'CUSTOMER') {
+      navigate('/login', {
+        state: { from: { pathname: location.pathname, search: location.search, hash: location.hash } },
+      });
+      return;
+    }
+
+    await addToCart(
       product,
       {
         variantId: product.variantId,

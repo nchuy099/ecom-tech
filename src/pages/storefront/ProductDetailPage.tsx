@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Star,
   ShieldCheck,
@@ -19,12 +19,16 @@ import { formatCurrency } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { PageLoading } from '../../components/ui/PageLoading';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart } = useCart();
+  const { isAuthenticated, role } = useAuth();
 
   const [variants, setVariants] = useState<ProductVariantDetailResponse[]>([]);
   const [inventory, setInventory] = useState<InventoryResponse[]>([]);
@@ -32,18 +36,51 @@ export const ProductDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'warehouses'>('desc');
   const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
 
-    ecommerceService.getProductDetail(id).then(data => {
-      setVariants(data);
-      setSelectedVariant(data[0] || null);
-      setQuantity(1);
-    });
+    let cancelled = false;
+    setIsLoading(true);
+    setSelectedVariant(null);
 
-    ecommerceService.getProductInventory(id).then(setInventory).catch(() => setInventory([]));
+    Promise.all([
+      ecommerceService.getProductDetail(id),
+      ecommerceService.getProductInventory(id).catch(() => []),
+    ])
+      .then(([data, inventoryData]) => {
+        if (cancelled) return;
+        setVariants(data);
+        setSelectedVariant(data[0] || null);
+        setInventory(inventoryData);
+        setQuantity(1);
+      })
+      .catch(() => {
+        if (!cancelled) setInventory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+        <nav className="flex items-center gap-2 text-xs text-zinc-500">
+          <Link to="/">Trang chủ</Link><span>/</span><Link to="/catalog">Sản phẩm</Link><span>/</span><span>Đang tải</span>
+        </nav>
+        <PageLoading variant="detail" className="px-0 py-0" label="Đang tải sản phẩm" />
+      </div>
+    );
+  }
 
   if (!selectedVariant) {
     return (
@@ -67,12 +104,28 @@ export const ProductDetailPage: React.FC = () => {
     reviewCount: 120,
   };
 
-  const handleAddToCart = () => {
-    addToCart(product, selectedVariant, quantity);
+  const redirectToLogin = () => {
+    navigate('/login', {
+      state: { from: { pathname: location.pathname, search: location.search, hash: location.hash } },
+    });
   };
 
-  const handleBuyNow = () => {
-    addToCart(product, selectedVariant, quantity);
+  const handleAddToCart = async () => {
+    if (!isAuthenticated || role !== 'CUSTOMER') {
+      redirectToLogin();
+      return;
+    }
+
+    await addToCart(product, selectedVariant, quantity);
+  };
+
+  const handleBuyNow = async () => {
+    if (!isAuthenticated || role !== 'CUSTOMER') {
+      redirectToLogin();
+      return;
+    }
+
+    await addToCart(product, selectedVariant, quantity);
     navigate('/checkout');
   };
 
